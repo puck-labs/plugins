@@ -1,0 +1,7 @@
+# Ignore everything except apps/web for deployment
+packages/*
+!apps/web
+.github
+.changeset
+*.md
+!apps/web/**/*.md

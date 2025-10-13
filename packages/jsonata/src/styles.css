@@ -1,0 +1,117 @@
+/**
+ * Optional styles for @puck-labs/jsonata
+ *
+ * Import this file to use the default minimal styling:
+ * import '@puck-labs/jsonata/styles.css';
+ *
+ * These styles are completely optional and can be overridden.
+ * All classes are prefixed with 'puck-jsonata-' to avoid conflicts.
+ */
+
+:root {
+  /* Tab switcher colors */
+  --puck-jsonata-tab-bg: #f3f4f6;
+  --puck-jsonata-tab-active: #ffffff;
+  --puck-jsonata-tab-hover: #e5e7eb;
+  --puck-jsonata-tab-text: #374151;
+  --puck-jsonata-tab-text-active: #111827;
+
+  /* Border colors */
+  --puck-jsonata-border: #e5e7eb;
+  --puck-jsonata-border-active: #3b82f6;
+
+  /* Editor colors */
+  --puck-jsonata-editor-bg: #1e1e1e;
+  --puck-jsonata-editor-text: #d4d4d4;
+
+  /* Error colors */
+  --puck-jsonata-error-bg: #fef2f2;
+  --puck-jsonata-error-border: #fca5a5;
+  --puck-jsonata-error-text: #991b1b;
+
+  /* Spacing */
+  --puck-jsonata-spacing-sm: 0.25rem;
+  --puck-jsonata-spacing-md: 0.5rem;
+  --puck-jsonata-spacing-lg: 1rem;
+}
+
+/* Tab switcher container */
+.puck-jsonata-tabs {
+  display: flex;
+  gap: var(--puck-jsonata-spacing-sm);
+  padding: var(--puck-jsonata-spacing-sm);
+  background: var(--puck-jsonata-tab-bg);
+  border-radius: 6px;
+  margin-bottom: var(--puck-jsonata-spacing-md);
+}
+
+/* Individual tab button */
+.puck-jsonata-tab {
+  padding: var(--puck-jsonata-spacing-md) var(--puck-jsonata-spacing-lg);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--puck-jsonata-tab-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.puck-jsonata-tab:hover {
+  background: var(--puck-jsonata-tab-hover);
+}
+
+.puck-jsonata-tab[data-active="true"] {
+  background: var(--puck-jsonata-tab-active);
+  border-color: var(--puck-jsonata-border-active);
+  color: var(--puck-jsonata-tab-text-active);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Expression editor container */
+.puck-jsonata-editor {
+  border: 1px solid var(--puck-jsonata-border);
+  border-radius: 4px;
+  overflow: hidden;
+  min-height: 100px;
+}
+
+.puck-jsonata-editor:focus-within {
+  border-color: var(--puck-jsonata-border-active);
+  outline: 2px solid rgba(59, 130, 246, 0.1);
+  outline-offset: 1px;
+}
+
+/* Error message */
+.puck-jsonata-error {
+  padding: var(--puck-jsonata-spacing-md);
+  background: var(--puck-jsonata-error-bg);
+  border: 1px solid var(--puck-jsonata-error-border);
+  border-radius: 4px;
+  color: var(--puck-jsonata-error-text);
+  font-size: 13px;
+  margin-top: var(--puck-jsonata-spacing-md);
+}
+
+/* Helper text */
+.puck-jsonata-help {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: var(--puck-jsonata-spacing-sm);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --puck-jsonata-tab-bg: #1f2937;
+    --puck-jsonata-tab-active: #374151;
+    --puck-jsonata-tab-hover: #2d3748;
+    --puck-jsonata-tab-text: #d1d5db;
+    --puck-jsonata-tab-text-active: #f9fafb;
+    --puck-jsonata-border: #374151;
+    --puck-jsonata-error-bg: #7f1d1d;
+    --puck-jsonata-error-border: #991b1b;
+    --puck-jsonata-error-text: #fca5a5;
+  }
+}
