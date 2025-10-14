@@ -40,6 +40,7 @@
   "devDependencies": {
     "@size-limit/file": "^11.2.0",
     "@types/node": "^22.13.8",
+    "@types/react": "^19.2.2",
     "size-limit": "^11.2.0",
     "tsdown": "^0.15.6",
     "typescript": "^5.7.3"
@@ -49,6 +50,7 @@
     "react": "^18.0.0 || ^19.0.0"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "jsonata": "^2.0.5"
   },
   "size-limit": [

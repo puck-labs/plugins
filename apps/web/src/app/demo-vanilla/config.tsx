@@ -4,6 +4,8 @@ import type { Config, Slot } from "@measured/puck";
 import { type ReactNode } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
+import { withExpressions } from "@puck-labs/jsonata";
+import "@puck-labs/jsonata/styles.css";
 
 // ============================================================================
 // CVA VARIANT DEFINITIONS
@@ -335,7 +337,7 @@ const mockExternalData = [
   { id: "5", name: "Epsilon Launch", category: "Marketing" },
 ];
 
-export const config: Config<{
+const baseConfig: Config<{
   FieldShowcase: FieldShowcaseProps;
   SlotShowcase: SlotShowcaseProps;
   TextBlock: TextBlockProps;
@@ -633,7 +635,7 @@ export const initialData = {
       type: "FieldShowcase",
       props: {
         id: "FieldShowcase-1",
-        ...config.components.FieldShowcase.defaultProps,
+        ...baseConfig.components.FieldShowcase.defaultProps,
       },
     },
     {
@@ -646,3 +648,6 @@ export const initialData = {
   ],
   root: {},
 };
+
+// Wrap config with expression support for primitive fields
+export const config = withExpressions(baseConfig);
