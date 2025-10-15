@@ -49,4 +49,7 @@ coverage
 tmp
 temp
 
+# Git worktrees
+.worktrees/
+
 .playwright-mcp
