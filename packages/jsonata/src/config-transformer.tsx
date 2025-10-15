@@ -6,9 +6,9 @@
  */
 
 import type { Config, Field } from "@measured/puck";
-import { ExpressionField } from "./components/ExpressionField";
-import { isPrimitiveField } from "./types";
+import { ExpressionField } from "./components/expression-field";
 import { resolveExpressions } from "./expression-resolver";
+import { isPrimitiveField } from "./types";
 
 /**
  * Transform a Puck config to add expression support to primitive fields
@@ -41,9 +41,13 @@ export function withExpressions<T extends Config>(config: T): T {
 
   // Traverse each component in the config
   for (const componentKey in transformedConfig.components) {
+    if (!Object.hasOwn(transformedConfig.components, componentKey)) {
+      continue;
+    }
+
     const component = config.components[componentKey];
 
-    if (!component || !component.fields) {
+    if (!component?.fields) {
       continue;
     }
 
@@ -84,6 +88,10 @@ function transformFields(fields: unknown): Record<string, Field> {
   const fieldsObj = fields as Record<string, Field>;
 
   for (const fieldKey in fieldsObj) {
+    if (!Object.hasOwn(fieldsObj, fieldKey)) {
+      continue;
+    }
+
     const field = fieldsObj[fieldKey];
 
     if (!field) {
@@ -102,8 +110,8 @@ function transformFields(fields: unknown): Record<string, Field> {
             <ExpressionField
               field={field}
               id={id}
-              value={value}
               onChange={onChange}
+              value={value}
             />
           );
         },

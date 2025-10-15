@@ -11,9 +11,9 @@
 
 import jsonata from "jsonata";
 import type {
+  EvaluationResult,
   ExpressionContext,
   ExpressionFieldValue,
-  EvaluationResult,
 } from "./types";
 
 /**
@@ -50,7 +50,7 @@ function isExpressionFieldValue(value: unknown): value is ExpressionFieldValue {
  */
 export async function evaluateExpression<T = unknown>(
   expression: string,
-  context: ExpressionContext,
+  context: ExpressionContext
 ): Promise<EvaluationResult<T>> {
   try {
     // Compile and evaluate JSONata expression (async in 2.0+)
@@ -111,7 +111,7 @@ function resolveFieldValue<T>(fieldValue: ExpressionFieldValue<T>): T {
  */
 export function resolveExpressions<T = unknown>(
   data: T,
-  visited: WeakSet<object> = new WeakSet(),
+  visited: WeakSet<object> = new WeakSet()
 ): T {
   // Primitive types - return as-is
   if (data === null || data === undefined) {
@@ -125,7 +125,7 @@ export function resolveExpressions<T = unknown>(
   // Circular reference detection
   if (visited.has(data as object)) {
     console.warn(
-      "[puck-jsonata] Circular reference detected, skipping to prevent infinite loop",
+      "[puck-jsonata] Circular reference detected, skipping to prevent infinite loop"
     );
     return data;
   }
@@ -151,7 +151,7 @@ export function resolveExpressions<T = unknown>(
   const result: Record<string, unknown> = {};
 
   for (const key in data) {
-    if (!Object.prototype.hasOwnProperty.call(data, key)) {
+    if (!Object.hasOwn(data, key)) {
       continue;
     }
 

@@ -6,13 +6,19 @@
  * - Dynamic tab: Shows Monaco editor for JSONata expressions with async evaluation
  */
 
-import { useState, useEffect, useRef } from "react";
-import { AutoField, FieldLabel } from "@measured/puck";
 import type { Field } from "@measured/puck";
+import { AutoField, FieldLabel } from "@measured/puck";
 import { Editor } from "@monaco-editor/react";
-import type { ExpressionFieldValue, ExpressionMode } from "../types";
-import { evaluateExpression } from "../expression-resolver";
+import { useEffect, useRef, useState } from "react";
 import { useExpressionContext } from "../expression-context";
+import { evaluateExpression } from "../expression-resolver";
+import type { ExpressionFieldValue, ExpressionMode } from "../types";
+
+/**
+ * Debounce delay for expression evaluation (milliseconds)
+ * Prevents excessive evaluations while user is typing
+ */
+const EXPRESSION_DEBOUNCE_MS = 300;
 
 /**
  * Coerce evaluation result to match field type
@@ -31,7 +37,9 @@ function coerceValueForField<T>(value: unknown, field: Field): T {
 
   // For number fields, parse to number
   if (fieldType === "number") {
-    if (typeof value === "number") return value as T;
+    if (typeof value === "number") {
+      return value as T;
+    }
     const parsed = Number(value);
     return (Number.isNaN(parsed) ? 0 : parsed) as T;
   }
@@ -91,10 +99,11 @@ export function ExpressionField<T = unknown>({
           __mode__: "static",
           __value__: value as T,
           __expression__: undefined,
+          __staticValue__: value as T, // Preserve original static value
         };
 
   const [currentMode, setCurrentMode] = useState<ExpressionMode>(
-    normalizedValue.__mode__,
+    normalizedValue.__mode__
   );
 
   // Debounced expression state (300ms delay)
@@ -105,19 +114,22 @@ export function ExpressionField<T = unknown>({
   // Race protection: version counter for async evaluations
   const evaluationVersion = useRef(0);
 
+  // Store latest normalized value in ref to read in effect without triggering re-evaluation
+  const normalizedValueRef = useRef(normalizedValue);
+  normalizedValueRef.current = normalizedValue;
+
+  // Store onChange in ref to avoid dependency issues
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   // Get expression context for evaluation
   const context = useExpressionContext();
-
-  // Update mode when value changes externally
-  useEffect(() => {
-    setCurrentMode(normalizedValue.__mode__);
-  }, [normalizedValue.__mode__]);
 
   // Debounce expression changes (typing)
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedExpression(normalizedValue.__expression__);
-    }, 300);
+    }, EXPRESSION_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
   }, [normalizedValue.__expression__]);
@@ -137,41 +149,64 @@ export function ExpressionField<T = unknown>({
     evaluationVersion.current += 1;
     const currentVersion = evaluationVersion.current;
 
+    // Capture current mode to check if it changed during async evaluation
+    const modeAtEvalStart = currentMode;
+
     // Evaluate async
     (async () => {
       const result = await evaluateExpression<T>(
         debouncedExpression.trim(),
-        context,
+        context
       );
 
-      // Only apply if this is still the latest evaluation
-      if (currentVersion === evaluationVersion.current) {
+      // Only apply if:
+      // 1. This is still the latest evaluation (version check)
+      // 2. Mode hasn't changed from dynamic to static during evaluation
+      if (
+        currentVersion === evaluationVersion.current &&
+        modeAtEvalStart === currentMode &&
+        currentMode === "dynamic"
+      ) {
+        const latestNormalizedValue = normalizedValueRef.current;
+
         // Coerce result to match field type (prevents React crashes)
         const coercedValue = result.success
           ? coerceValueForField<T>(result.value, field)
-          : normalizedValue.__value__;
+          : latestNormalizedValue.__value__;
 
-        onChange({
+        onChangeRef.current({
           __mode__: "dynamic",
-          __expression__: normalizedValue.__expression__,
+          __expression__: latestNormalizedValue.__expression__,
           __value__: coercedValue,
+          __staticValue__: latestNormalizedValue.__staticValue__, // Preserve original static value
         });
       }
     })();
-  }, [debouncedExpression, context, currentMode]); // Context changes trigger re-evaluation
+  }, [debouncedExpression, context, currentMode, field]); // Context and field type changes trigger re-evaluation
 
   const handleModeChange = (newMode: ExpressionMode) => {
     setCurrentMode(newMode);
-    onChange({
-      ...normalizedValue,
-      __mode__: newMode,
-    });
+
+    // When switching to static mode, restore the original static value
+    if (newMode === "static" && normalizedValue.__staticValue__ !== undefined) {
+      onChange({
+        ...normalizedValue,
+        __mode__: newMode,
+        __value__: normalizedValue.__staticValue__, // Restore original static value
+      });
+    } else {
+      onChange({
+        ...normalizedValue,
+        __mode__: newMode,
+      });
+    }
   };
 
   const handleStaticValueChange = (newValue: T) => {
     onChange({
       ...normalizedValue,
       __value__: newValue,
+      __staticValue__: newValue, // Keep static value in sync when user edits
     });
   };
 
@@ -186,30 +221,30 @@ export function ExpressionField<T = unknown>({
     <div className="puck-jsonata-field">
       {/* Field Label */}
       {field.label && (
-        <FieldLabel label={field.label} icon={undefined} el="label" />
+        <FieldLabel el="label" icon={undefined} label={field.label} />
       )}
 
       {/* Tab Switcher */}
       <div className="puck-jsonata-tabs" role="tablist">
         <button
-          type="button"
-          role="tab"
           aria-selected={currentMode === "static"}
           className="puck-jsonata-tab"
           data-active={currentMode === "static"}
-          onClick={() => handleModeChange("static")}
           disabled={readOnly}
+          onClick={() => handleModeChange("static")}
+          role="tab"
+          type="button"
         >
           Static
         </button>
         <button
-          type="button"
-          role="tab"
           aria-selected={currentMode === "dynamic"}
           className="puck-jsonata-tab"
           data-active={currentMode === "dynamic"}
-          onClick={() => handleModeChange("dynamic")}
           disabled={readOnly}
+          onClick={() => handleModeChange("dynamic")}
+          role="tab"
+          type="button"
         >
           Dynamic
         </button>
@@ -223,17 +258,16 @@ export function ExpressionField<T = unknown>({
               field={field}
               id={id}
               onChange={handleStaticValueChange}
-              value={normalizedValue.__value__}
               readOnly={readOnly}
+              value={normalizedValue.__value__}
             />
           </div>
         ) : (
           <div role="tabpanel">
             <div className="puck-jsonata-editor">
               <Editor
-                height="200px"
                 defaultLanguage="javascript"
-                value={normalizedValue.__expression__ ?? ""}
+                height="200px"
                 onChange={handleExpressionChange}
                 options={{
                   minimap: { enabled: false },
@@ -245,6 +279,7 @@ export function ExpressionField<T = unknown>({
                   tabSize: 2,
                   theme: "vs",
                 }}
+                value={normalizedValue.__expression__ ?? ""}
               />
             </div>
             <p className="puck-jsonata-help">

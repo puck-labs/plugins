@@ -1,18 +1,26 @@
 "use client";
 
 import type { Config, Slot } from "@measured/puck";
-import { type ReactNode } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
 import { withExpressions } from "@puck-labs/jsonata";
+import { cva } from "class-variance-authority";
+import type { ReactNode } from "react";
 import "@puck-labs/jsonata/styles.css";
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+/**
+ * Simulated API delay for external field data fetching (milliseconds)
+ */
+const API_SIMULATION_DELAY_MS = 300;
 
 // ============================================================================
 // CVA VARIANT DEFINITIONS
 // ============================================================================
 
 // Field card variants for showcase sections
-const fieldCardVariants = cva("pl-5 py-3 rounded-r-lg border-l-4", {
+const fieldCardVariants = cva("rounded-r-lg border-l-4 py-3 pl-5", {
   variants: {
     color: {
       blue: "border-blue-500 bg-blue-50",
@@ -31,7 +39,7 @@ const fieldCardVariants = cva("pl-5 py-3 rounded-r-lg border-l-4", {
   },
 });
 
-const fieldCardTitleVariants = cva("font-semibold text-lg mb-2", {
+const fieldCardTitleVariants = cva("mb-2 font-semibold text-lg", {
   variants: {
     color: {
       blue: "text-blue-900",
@@ -50,7 +58,7 @@ const fieldCardTitleVariants = cva("font-semibold text-lg mb-2", {
   },
 });
 
-const textVariants = cva("text-slate-700 py-2", {
+const textVariants = cva("py-2 text-slate-700", {
   variants: {
     size: {
       small: "text-sm leading-relaxed",
@@ -64,22 +72,22 @@ const textVariants = cva("text-slate-700 py-2", {
 });
 
 const buttonVariants = cva(
-  "px-6 py-2.5 rounded-lg font-semibold transition-all duration-200",
+  "rounded-lg px-6 py-2.5 font-semibold transition-all duration-200",
   {
     variants: {
       variant: {
         primary:
-          "bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg",
+          "bg-blue-600 text-white shadow-md hover:bg-blue-700 hover:shadow-lg",
         secondary:
-          "bg-slate-600 text-white hover:bg-slate-700 shadow-md hover:shadow-lg",
+          "bg-slate-600 text-white shadow-md hover:bg-slate-700 hover:shadow-lg",
         outline:
-          "border-2 border-blue-600 text-blue-600 hover:bg-blue-50 bg-white shadow-sm hover:shadow-md",
+          "border-2 border-blue-600 bg-white text-blue-600 shadow-sm hover:bg-blue-50 hover:shadow-md",
       },
     },
     defaultVariants: {
       variant: "primary",
     },
-  },
+  }
 );
 
 // ============================================================================
@@ -103,14 +111,12 @@ type FieldCardProps = {
   children: ReactNode;
 };
 
-const FieldCard = ({ color, title, children }: FieldCardProps) => {
-  return (
-    <div className={fieldCardVariants({ color })}>
-      <h3 className={fieldCardTitleVariants({ color })}>{title}</h3>
-      <div className="text-slate-600 text-sm">{children}</div>
-    </div>
-  );
-};
+const FieldCard = ({ color, title, children }: FieldCardProps) => (
+  <div className={fieldCardVariants({ color })}>
+    <h3 className={fieldCardTitleVariants({ color })}>{title}</h3>
+    <div className="text-slate-600 text-sm">{children}</div>
+  </div>
+);
 
 // ============================================================================
 // FIELD SHOWCASE COMPONENT
@@ -174,12 +180,12 @@ const FieldShowcase = ({
   customField,
 }: FieldShowcaseProps) => {
   return (
-    <div className="max-w-4xl mx-auto p-12 min-h-screen bg-gradient-to-b from-slate-50 to-slate-100">
-      <div className="bg-white rounded-2xl p-10 shadow-xl">
-        <h2 className="text-4xl font-extrabold mb-3 text-slate-900 tracking-tight">
+    <div className="mx-auto min-h-screen max-w-4xl bg-gradient-to-b from-slate-50 to-slate-100 p-12">
+      <div className="rounded-2xl bg-white p-10 shadow-xl">
+        <h2 className="mb-3 font-extrabold text-4xl text-slate-900 tracking-tight">
           Puck Field Types Showcase
         </h2>
-        <p className="text-base text-slate-500 mb-10">
+        <p className="mb-10 text-base text-slate-500">
           Complete demonstration of all field types supported by Puck editor
         </p>
 
@@ -202,7 +208,7 @@ const FieldShowcase = ({
           {/* Select Field */}
           <FieldCard color="amber" title="Select Field">
             Selected:{" "}
-            <span className="bg-amber-200 px-2 py-0.5 rounded font-medium">
+            <span className="rounded bg-amber-200 px-2 py-0.5 font-medium">
               {selectField}
             </span>
           </FieldCard>
@@ -210,7 +216,7 @@ const FieldShowcase = ({
           {/* Radio Field */}
           <FieldCard color="red" title="Radio Field">
             Selected:{" "}
-            <span className="bg-red-200 px-2 py-0.5 rounded font-medium">
+            <span className="rounded bg-red-200 px-2 py-0.5 font-medium">
               {radioField}
             </span>
           </FieldCard>
@@ -218,9 +224,9 @@ const FieldShowcase = ({
           {/* Array Field */}
           <FieldCard color="indigo" title="Array Field">
             <ul className="list-none space-y-2">
-              {arrayField.map((item, idx) => (
-                <li key={idx} className="flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+              {arrayField.map((item) => (
+                <li className="flex items-center gap-2" key={item.label}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                   <span>
                     <strong>{item.label}</strong>: {item.value}
                   </span>
@@ -264,7 +270,7 @@ const FieldShowcase = ({
 
           {/* Custom Field */}
           <FieldCard color="orange" title="Custom Field">
-            <p className="font-mono bg-amber-100 p-3 rounded-md">
+            <p className="rounded-md bg-amber-100 p-3 font-mono">
               {customField}
             </p>
           </FieldCard>
@@ -284,19 +290,17 @@ export type SlotShowcaseProps = {
   children: Slot;
 };
 
-const SlotShowcase = ({ title, children: Children }: SlotShowcaseProps) => {
-  return (
-    <div className="max-w-4xl mx-auto p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-lg">
-      <h2 className="text-3xl font-bold text-slate-900 mb-4">{title}</h2>
-      <div className="border-2 border-dashed border-indigo-300 rounded-xl p-8 min-h-[250px] bg-white/80 backdrop-blur-sm">
-        <Children />
-      </div>
-      <p className="text-sm text-slate-600 italic mt-4 text-center">
-        ↑ This is a Slot field - drag components here!
-      </p>
+const SlotShowcase = ({ title, children: Children }: SlotShowcaseProps) => (
+  <div className="mx-auto max-w-4xl rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-8 shadow-lg">
+    <h2 className="mb-4 font-bold text-3xl text-slate-900">{title}</h2>
+    <div className="min-h-[250px] rounded-xl border-2 border-indigo-300 border-dashed bg-white/80 p-8 backdrop-blur-sm">
+      <Children />
     </div>
-  );
-};
+    <p className="mt-4 text-center text-slate-600 text-sm italic">
+      ↑ This is a Slot field - drag components here!
+    </p>
+  </div>
+);
 
 // ============================================================================
 // SIMPLE COMPONENTS FOR SLOT DEMONSTRATION
@@ -307,22 +311,20 @@ export type TextBlockProps = {
   size: "small" | "medium" | "large";
 };
 
-const TextBlock = ({ text, size }: TextBlockProps) => {
-  return <p className={textVariants({ size })}>{text}</p>;
-};
+const TextBlock = ({ text, size }: TextBlockProps) => (
+  <p className={textVariants({ size })}>{text}</p>
+);
 
 export type ButtonBlockProps = {
   label: string;
   variant: "primary" | "secondary" | "outline";
 };
 
-const ButtonBlock = ({ label, variant }: ButtonBlockProps) => {
-  return (
-    <button type="button" className={buttonVariants({ variant })}>
-      {label}
-    </button>
-  );
-};
+const ButtonBlock = ({ label, variant }: ButtonBlockProps) => (
+  <button className={buttonVariants({ variant })} type="button">
+    {label}
+  </button>
+);
 
 // ============================================================================
 // PUCK CONFIG
@@ -465,7 +467,9 @@ const baseConfig: Config<{
           placeholder: "Search for a project...",
           fetchList: async ({ query, filters }) => {
             // Simulate API delay
-            await new Promise((resolve) => setTimeout(resolve, 300));
+            await new Promise((resolve) =>
+              setTimeout(resolve, API_SIMULATION_DELAY_MS)
+            );
 
             return mockExternalData
               .filter((item) => {
@@ -516,19 +520,19 @@ const baseConfig: Config<{
           render: ({ value, onChange }) => (
             <div className="space-y-2">
               <input
+                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => onChange(e.target.value)}
+                placeholder="Custom input with emoji picker..."
                 type="text"
                 value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Custom input with emoji picker..."
               />
               <div className="flex gap-2">
                 {["🎉", "🚀", "✨", "💡", "🔥", "⚡"].map((emoji) => (
                   <button
+                    className="rounded-md bg-gray-100 px-3 py-1 transition-colors hover:bg-gray-200"
                     key={emoji}
-                    type="button"
                     onClick={() => onChange(value + emoji)}
-                    className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                    type="button"
                   >
                     {emoji}
                   </button>
