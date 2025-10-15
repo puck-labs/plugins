@@ -14,6 +14,7 @@ export type ExpressionFieldValue<T = unknown> = {
   __mode__: ExpressionMode;
   __expression__?: string; // JSONata expression (only in dynamic mode)
   __value__: T; // Actual value (static or evaluated result)
+  __staticValue__?: T; // Original static value (preserved when switching to dynamic mode)
 };
 
 /**
@@ -53,7 +54,7 @@ export type PrimitiveFieldType =
  * Type guard to check if a field is a primitive type
  */
 export function isPrimitiveField(
-  field: Field,
+  field: Field
 ): field is Field & { type: PrimitiveFieldType } {
   return ["text", "textarea", "number", "select", "radio"].includes(field.type);
 }
