@@ -23,14 +23,14 @@
  * - expression-field-logic.test.ts (pure function tests)
  */
 
-import { render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { Field } from "@measured/puck";
-import { ExpressionField } from "../components/expression-field";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { ExpressionFieldProps } from "../components/expression-field";
+import { ExpressionField } from "../components/expression-field";
 import { ExpressionProvider } from "../expression-context";
-import type { ExpressionFieldValue } from "../types";
 import * as expressionResolverModule from "../expression-resolver";
+import type { ExpressionFieldValue } from "../types";
 
 // === MOCKS ===
 
@@ -46,11 +46,11 @@ vi.mock("@monaco-editor/react", () => ({
     options?: { readOnly?: boolean };
   }) => (
     <textarea
+      aria-label="Expression editor"
       data-testid="monaco-editor"
-      value={value ?? ""}
       onChange={(e) => onChange?.(e.target.value)}
       readOnly={options?.readOnly}
-      aria-label="Expression editor"
+      value={value ?? ""}
     />
   ),
 }));
@@ -77,16 +77,16 @@ vi.mock("@measured/puck", () => ({
     readOnly?: boolean;
   }) => (
     <input
+      aria-label={field.label}
       data-testid="auto-field"
-      type={field.type === "number" ? "number" : "text"}
-      value={String(value ?? "")}
       onChange={(e) => {
         const newValue =
           field.type === "number" ? Number(e.target.value) : e.target.value;
         onChange?.(newValue);
       }}
       readOnly={readOnly}
-      aria-label={field.label}
+      type={field.type === "number" ? "number" : "text"}
+      value={String(value ?? "")}
     />
   ),
   FieldLabel: ({ label }: { label: string }) => <label>{label}</label>,
@@ -99,7 +99,7 @@ vi.mock("@measured/puck", () => ({
  */
 function renderExpressionField(
   props: Partial<ExpressionFieldProps> = {},
-  context: Record<string, unknown> = {},
+  context: Record<string, unknown> = {}
 ) {
   const defaultProps: ExpressionFieldProps = {
     field: { type: "text", label: "Test Field" },
@@ -115,7 +115,7 @@ function renderExpressionField(
   return render(
     <ExpressionProvider value={context}>
       <ExpressionField {...defaultProps} />
-    </ExpressionProvider>,
+    </ExpressionProvider>
   );
 }
 
@@ -218,8 +218,10 @@ describe("ExpressionField Component", () => {
         } as ExpressionFieldValue<string>,
       });
 
-      // Wait a moment to ensure no evaluation happens
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Wait a moment to ensure no evaluation happens (wrapped in act)
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      });
 
       // Cast to vi.fn to access mock calls
       const evaluator =
@@ -248,13 +250,20 @@ describe("ExpressionField Component", () => {
         } as ExpressionFieldValue<string>,
       });
 
-      // Wait for initial evaluation
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      // Wait for initial evaluation to complete
+      await waitFor(
+        () => {
+          expect(evaluator).toHaveBeenCalled();
+        },
+        { timeout: 500 }
+      );
 
       const evaluationCalls = evaluator.mock.calls.length;
 
-      // Wait again to ensure no additional evaluations
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      // Wait again to ensure no additional evaluations (wrapped in act)
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      });
 
       expect(evaluator.mock.calls.length).toBe(evaluationCalls); // No additional calls
     });
@@ -271,8 +280,10 @@ describe("ExpressionField Component", () => {
         } as ExpressionFieldValue<string>,
       });
 
-      // Wait for potential debounce
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      // Wait for potential debounce (wrapped in act)
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      });
 
       // Cast to vi.fn to access mock calls
       const evaluator =
