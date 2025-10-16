@@ -10,10 +10,13 @@ import type { Field } from "@measured/puck";
 import { AutoField, FieldLabel } from "@measured/puck";
 import { Editor, type OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useExpressionContext } from "../expression-context";
 import { evaluateExpression } from "../expression-resolver";
-import { createJsonataCompletionProvider } from "../monaco/jsonata-completion";
+import {
+  createJsonataCompletionProvider,
+  createJsonataHoverProvider,
+} from "../monaco/jsonata-completion";
 import { registerJsonataLanguage } from "../monaco/jsonata-language";
 import type { ExpressionFieldValue, ExpressionMode } from "../types";
 
@@ -106,7 +109,7 @@ export function ExpressionField<T = unknown>({
         };
 
   const [currentMode, setCurrentMode] = useState<ExpressionMode>(
-    normalizedValue.__mode__,
+    normalizedValue.__mode__
   );
 
   // Debounced expression state (300ms delay)
@@ -127,29 +130,91 @@ export function ExpressionField<T = unknown>({
 
   // Get expression context for evaluation
   const context = useExpressionContext();
+  const contextRef = useRef(context);
+  contextRef.current = context;
+
+  // Monaco references
+  const monacoRef = useRef<typeof Monaco | null>(null);
+  const editorRef =
+    useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const disposablesRef = useRef<Monaco.IDisposable[]>([]);
 
   // Track if Monaco language has been registered
   const monacoRegisteredRef = useRef(false);
 
+  const [evaluationError, setEvaluationError] = useState<string | undefined>(
+    normalizedValue.__error__
+  );
+  const evaluationErrorRef = useRef<string | undefined>(evaluationError);
+  evaluationErrorRef.current = evaluationError;
+
+  const emitChange = useCallback(
+    (nextValue: ExpressionFieldValue<T>) => {
+      normalizedValueRef.current = nextValue;
+      try {
+        onChangeRef.current(nextValue);
+      } catch (error) {
+        console.error("[puck-jsonata] onChange handler threw:", error);
+      }
+    },
+    []
+  );
+
   // Handle Monaco editor mount - register JSONata language and completion
-  const handleEditorMount: OnMount = (editor, monaco) => {
-    if (monacoRegisteredRef.current) {
-      return; // Already registered
+  const handleEditorMount: OnMount = useCallback(
+    (editor, monaco) => {
+      editorRef.current = editor;
+      monacoRef.current = monaco;
+
+      if (!monacoRegisteredRef.current) {
+        try {
+          registerJsonataLanguage(monaco);
+        } catch (error) {
+          console.error("Error registering JSONata language:", error);
+        }
+        monacoRegisteredRef.current = true;
+      }
+
+      disposablesRef.current.forEach((disposable) => disposable.dispose());
+      disposablesRef.current = [];
+
+      try {
+        disposablesRef.current.push(
+          monaco.languages.registerCompletionItemProvider(
+            "jsonata",
+            createJsonataCompletionProvider(monaco, () => contextRef.current)
+          )
+        );
+
+        disposablesRef.current.push(
+          monaco.languages.registerHoverProvider(
+            "jsonata",
+            createJsonataHoverProvider(monaco, () => contextRef.current)
+          )
+        );
+      } catch (error) {
+        console.error("Error registering JSONata providers:", error);
+      }
+    },
+    []
+  );
+
+  const handleEditorUnmount = useCallback(() => {
+    const monaco = monacoRef.current;
+    const editor = editorRef.current;
+    if (monaco && editor) {
+      const model = editor.getModel();
+      if (model) {
+        monaco.editor.setModelMarkers(model, "jsonata-evaluation", []);
+      }
     }
 
-    try {
-      // Register JSONata language with syntax highlighting
-      registerJsonataLanguage(monaco);
+    disposablesRef.current.forEach((disposable) => disposable.dispose());
+    disposablesRef.current = [];
 
-      // Register JSONata completion provider
-      const provider = createJsonataCompletionProvider(monaco, () => context);
-      monaco.languages.registerCompletionItemProvider("jsonata", provider);
-
-      monacoRegisteredRef.current = true;
-    } catch (error) {
-      console.error("Error registering JSONata language:", error);
-    }
-  };
+    editorRef.current = null;
+    monacoRef.current = null;
+  }, []);
 
   // Debounce expression changes (typing)
   useEffect(() => {
@@ -162,85 +227,165 @@ export function ExpressionField<T = unknown>({
 
   // Async evaluation effect
   useEffect(() => {
-    // Only evaluate in dynamic mode with non-empty expression
-    if (
-      currentMode !== "dynamic" ||
-      !debouncedExpression ||
-      !debouncedExpression.trim()
-    ) {
+    if (currentMode !== "dynamic") {
       return;
     }
 
-    // Increment version for race protection
+    const trimmedExpression = debouncedExpression?.trim();
+
+    if (!trimmedExpression) {
+      if (evaluationErrorRef.current !== undefined) {
+        setEvaluationError(undefined);
+      }
+
+      const latest = normalizedValueRef.current;
+      if (latest.__error__) {
+        const clearedValue: ExpressionFieldValue<T> = {
+          ...latest,
+        };
+        delete clearedValue.__error__;
+        emitChange(clearedValue);
+      }
+
+      return;
+    }
+
     evaluationVersion.current += 1;
     const currentVersion = evaluationVersion.current;
-
-    // Capture current mode to check if it changed during async evaluation
     const modeAtEvalStart = currentMode;
 
-    // Evaluate async
     (async () => {
-      const result = await evaluateExpression<T>(
-        debouncedExpression.trim(),
-        context,
-      );
+      const result = await evaluateExpression<T>(trimmedExpression, context);
 
-      // Only apply if:
-      // 1. This is still the latest evaluation (version check)
-      // 2. Mode hasn't changed from dynamic to static during evaluation
       if (
-        currentVersion === evaluationVersion.current &&
-        modeAtEvalStart === currentMode &&
-        currentMode === "dynamic"
+        currentVersion !== evaluationVersion.current ||
+        modeAtEvalStart !== currentMode ||
+        currentMode !== "dynamic"
       ) {
-        const latestNormalizedValue = normalizedValueRef.current;
-
-        // Coerce result to match field type (prevents React crashes)
-        const coercedValue = result.success
-          ? coerceValueForField<T>(result.value, field)
-          : latestNormalizedValue.__value__;
-
-        onChangeRef.current({
-          __mode__: "dynamic",
-          __expression__: latestNormalizedValue.__expression__,
-          __value__: coercedValue,
-          __staticValue__: latestNormalizedValue.__staticValue__, // Preserve original static value
-        });
+        return;
       }
+
+      const latest = normalizedValueRef.current;
+      const nextValue: ExpressionFieldValue<T> = {
+        ...latest,
+        __mode__: "dynamic",
+        __expression__: latest.__expression__,
+        __staticValue__: latest.__staticValue__,
+      };
+
+      if (result.success) {
+        nextValue.__value__ = coerceValueForField<T>(result.value, field);
+        if (evaluationErrorRef.current !== undefined) {
+          setEvaluationError(undefined);
+        }
+        delete nextValue.__error__;
+      } else {
+        nextValue.__value__ = latest.__value__;
+        nextValue.__error__ =
+          result.error ?? "JSONata evaluation failed";
+        if (evaluationErrorRef.current !== nextValue.__error__) {
+          setEvaluationError(nextValue.__error__);
+        }
+      }
+
+      emitChange(nextValue);
     })();
-  }, [debouncedExpression, context, currentMode, field]); // Context and field type changes trigger re-evaluation
+  }, [context, currentMode, debouncedExpression, emitChange, field]);
+
+  // Sync local error state with incoming metadata
+  useEffect(() => {
+    if (currentMode !== "dynamic") {
+      if (evaluationError !== undefined) {
+        setEvaluationError(undefined);
+      }
+      return;
+    }
+
+    const incomingError = normalizedValue.__error__;
+    if (incomingError && incomingError !== evaluationErrorRef.current) {
+      setEvaluationError(incomingError);
+    }
+    if (!incomingError && evaluationErrorRef.current) {
+      setEvaluationError(undefined);
+    }
+  }, [currentMode, normalizedValue.__error__]);
+
+  // Update Monaco markers when error state changes
+  useEffect(() => {
+    const monaco = monacoRef.current;
+    const editor = editorRef.current;
+    if (!monaco || !editor) {
+      return;
+    }
+
+    const model = editor.getModel();
+    if (!model) {
+      return;
+    }
+
+    if (currentMode !== "dynamic" || !evaluationError) {
+      monaco.editor.setModelMarkers(model, "jsonata-evaluation", []);
+      return;
+    }
+
+    const lastLine = Math.max(model.getLineCount(), 1);
+    monaco.editor.setModelMarkers(model, "jsonata-evaluation", [
+      {
+        message: evaluationError,
+        severity: monaco.MarkerSeverity.Error,
+        startLineNumber: 1,
+        startColumn: 1,
+        endLineNumber: lastLine,
+        endColumn: model.getLineMaxColumn(lastLine),
+      },
+    ]);
+  }, [currentMode, evaluationError]);
 
   const handleModeChange = (newMode: ExpressionMode) => {
     setCurrentMode(newMode);
 
-    // When switching to static mode, restore the original static value
-    if (newMode === "static" && normalizedValue.__staticValue__ !== undefined) {
-      onChange({
-        ...normalizedValue,
-        __mode__: newMode,
-        __value__: normalizedValue.__staticValue__, // Restore original static value
-      });
-    } else {
-      onChange({
-        ...normalizedValue,
-        __mode__: newMode,
-      });
+    const nextValue: ExpressionFieldValue<T> = {
+      ...normalizedValue,
+      __mode__: newMode,
+    };
+
+    delete nextValue.__error__;
+    if (evaluationErrorRef.current !== undefined) {
+      setEvaluationError(undefined);
     }
+
+    if (newMode === "static") {
+      if (normalizedValue.__staticValue__ !== undefined) {
+        nextValue.__value__ = normalizedValue.__staticValue__;
+      }
+    }
+
+    emitChange(nextValue);
   };
 
   const handleStaticValueChange = (newValue: T) => {
-    onChange({
+    const nextValue: ExpressionFieldValue<T> = {
       ...normalizedValue,
       __value__: newValue,
-      __staticValue__: newValue, // Keep static value in sync when user edits
-    });
+      __staticValue__: newValue,
+    };
+
+    delete nextValue.__error__;
+    emitChange(nextValue);
   };
 
   const handleExpressionChange = (newExpression: string | undefined) => {
-    onChange({
+    if (evaluationErrorRef.current !== undefined) {
+      setEvaluationError(undefined);
+    }
+
+    const nextValue: ExpressionFieldValue<T> = {
       ...normalizedValue,
       __expression__: newExpression,
-    });
+    };
+
+    delete nextValue.__error__;
+    emitChange(nextValue);
   };
 
   return (
@@ -296,6 +441,7 @@ export function ExpressionField<T = unknown>({
                 height="200px"
                 onChange={handleExpressionChange}
                 onMount={handleEditorMount}
+                onUnmount={handleEditorUnmount}
                 options={{
                   minimap: { enabled: false },
                   lineNumbers: "on",
