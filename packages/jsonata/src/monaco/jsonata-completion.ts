@@ -440,6 +440,124 @@ const JSONATA_OPERATORS = [
   },
 ];
 
+type ContextEntry = {
+  label: string;
+  detail: string;
+  documentation: Monaco.IMarkdownString;
+  insertText: string;
+};
+
+function escapeInlineMarkdown(value: string): string {
+  return value.replace(/[`\\]/g, (match) => `\\${match}`).replace(/\n/g, " ");
+}
+
+function describeContextValue(value: unknown): { type: string; preview?: string } {
+  if (value === null) {
+    return { type: "null" };
+  }
+
+  if (value === undefined) {
+    return { type: "undefined" };
+  }
+
+  if (Array.isArray(value)) {
+    const length = value.length;
+    let preview: string | undefined;
+    if (length > 0) {
+      try {
+        const serialized = JSON.stringify(value.slice(0, 3));
+        preview = length > 3 ? `${serialized?.slice(0, 60)}…` : serialized;
+      } catch {
+        preview = undefined;
+      }
+    }
+    return { type: `array(${length})`, preview };
+  }
+
+  if (value instanceof Date) {
+    return { type: "date", preview: value.toISOString() };
+  }
+
+  const valueType = typeof value;
+
+  if (valueType === "object") {
+    try {
+      const json = JSON.stringify(value);
+      if (json) {
+        return {
+          type: "object",
+          preview: json.length > 80 ? `${json.slice(0, 77)}…` : json,
+        };
+      }
+    } catch {
+      return { type: "object" };
+    }
+    return { type: "object" };
+  }
+
+  if (valueType === "function") {
+    return {
+      type: "function",
+      preview: (value as () => unknown).name || "anonymous",
+    };
+  }
+
+  const stringValue = String(value);
+  return {
+    type: valueType,
+    preview: stringValue.length > 80 ? `${stringValue.slice(0, 77)}…` : stringValue,
+  };
+}
+
+function buildContextEntries(
+  monaco: typeof Monaco,
+  context: Record<string, unknown>,
+): ContextEntry[] {
+  const entries: ContextEntry[] = [];
+  const seen = new Set<string>();
+
+  for (const [key, value] of Object.entries(context)) {
+    if (!key || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+
+    const { type, preview } = describeContextValue(value);
+    const markdown = new monaco.MarkdownString();
+    markdown.appendMarkdown(`**${key}**\n\n`);
+    markdown.appendMarkdown(`Type: \`${type}\``);
+
+    if (preview) {
+      markdown.appendMarkdown(`\n\nPreview: \`${escapeInlineMarkdown(preview)}\``);
+    }
+
+    if (key === "$item") {
+      markdown.appendMarkdown(
+        "\n\nCurrent array item available when editing repeatable fields.",
+      );
+    }
+
+    if (key === "$index") {
+      markdown.appendMarkdown(
+        "\n\nZero-based index for the current array item in repeatable fields.",
+      );
+    }
+
+    const detailPrefix =
+      key === "$item" || key === "$index" ? "Array scope" : "Context variable";
+
+    entries.push({
+      label: key,
+      detail: `${detailPrefix} (${type})`,
+      documentation: markdown,
+      insertText: key,
+    });
+  }
+
+  return entries.sort((a, b) => a.label.localeCompare(b.label));
+}
+
 /**
  * Create JSONata completion provider
  */
@@ -507,21 +625,14 @@ export function createJsonataCompletionProvider(
       });
 
       // Add context variables
-      const contextVars = getContextVariables();
-      for (const [key, value] of Object.entries(contextVars)) {
-        const varName = key.startsWith("$") ? key : `$${key}`;
-        const valueType = typeof value;
-        const valuePreview =
-          valueType === "object"
-            ? JSON.stringify(value).substring(0, 100)
-            : String(value);
-
+      const contextEntries = buildContextEntries(monaco, getContextVariables());
+      for (const entry of contextEntries) {
         suggestions.push({
-          label: varName,
+          label: entry.label,
           kind: monaco.languages.CompletionItemKind.Variable,
-          detail: `Context variable (${valueType})`,
-          documentation: `Available in expression scope: ${valuePreview}`,
-          insertText: varName,
+          detail: entry.detail,
+          documentation: entry.documentation,
+          insertText: entry.insertText,
           range,
         });
       }
@@ -540,6 +651,40 @@ export function createJsonataCompletionProvider(
       }
 
       return { suggestions };
+    },
+  };
+}
+
+export function createJsonataHoverProvider(
+  monaco: typeof Monaco,
+  getContextVariables: () => Record<string, unknown>,
+): Monaco.languages.HoverProvider {
+  return {
+    provideHover: (model, position) => {
+      const word = model.getWordAtPosition(position);
+      if (!word) {
+        return null;
+      }
+
+      const contextEntries = buildContextEntries(monaco, getContextVariables());
+      const candidateLabels = new Set([word.word, `$${word.word}`]);
+      const entry = contextEntries.find((item) =>
+        candidateLabels.has(item.label)
+      );
+
+      if (!entry) {
+        return null;
+      }
+
+      return {
+        range: new monaco.Range(
+          position.lineNumber,
+          word.startColumn,
+          position.lineNumber,
+          word.endColumn,
+        ),
+        contents: [entry.documentation],
+      };
     },
   };
 }
