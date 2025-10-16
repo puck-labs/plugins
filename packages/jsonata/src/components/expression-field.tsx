@@ -8,10 +8,13 @@
 
 import type { Field } from "@measured/puck";
 import { AutoField, FieldLabel } from "@measured/puck";
-import { Editor } from "@monaco-editor/react";
+import { Editor, type OnMount } from "@monaco-editor/react";
+import type * as Monaco from "monaco-editor";
 import { useEffect, useRef, useState } from "react";
 import { useExpressionContext } from "../expression-context";
 import { evaluateExpression } from "../expression-resolver";
+import { createJsonataCompletionProvider } from "../monaco/jsonata-completion";
+import { registerJsonataLanguage } from "../monaco/jsonata-language";
 import type { ExpressionFieldValue, ExpressionMode } from "../types";
 
 /**
@@ -103,7 +106,7 @@ export function ExpressionField<T = unknown>({
         };
 
   const [currentMode, setCurrentMode] = useState<ExpressionMode>(
-    normalizedValue.__mode__
+    normalizedValue.__mode__,
   );
 
   // Debounced expression state (300ms delay)
@@ -124,6 +127,29 @@ export function ExpressionField<T = unknown>({
 
   // Get expression context for evaluation
   const context = useExpressionContext();
+
+  // Track if Monaco language has been registered
+  const monacoRegisteredRef = useRef(false);
+
+  // Handle Monaco editor mount - register JSONata language and completion
+  const handleEditorMount: OnMount = (editor, monaco) => {
+    if (monacoRegisteredRef.current) {
+      return; // Already registered
+    }
+
+    try {
+      // Register JSONata language with syntax highlighting
+      registerJsonataLanguage(monaco);
+
+      // Register JSONata completion provider
+      const provider = createJsonataCompletionProvider(monaco, () => context);
+      monaco.languages.registerCompletionItemProvider("jsonata", provider);
+
+      monacoRegisteredRef.current = true;
+    } catch (error) {
+      console.error("Error registering JSONata language:", error);
+    }
+  };
 
   // Debounce expression changes (typing)
   useEffect(() => {
@@ -156,7 +182,7 @@ export function ExpressionField<T = unknown>({
     (async () => {
       const result = await evaluateExpression<T>(
         debouncedExpression.trim(),
-        context
+        context,
       );
 
       // Only apply if:
@@ -266,9 +292,10 @@ export function ExpressionField<T = unknown>({
           <div role="tabpanel">
             <div className="puck-jsonata-editor">
               <Editor
-                defaultLanguage="javascript"
+                defaultLanguage="jsonata"
                 height="200px"
                 onChange={handleExpressionChange}
+                onMount={handleEditorMount}
                 options={{
                   minimap: { enabled: false },
                   lineNumbers: "on",
