@@ -26,7 +26,10 @@
     "dev": "tsdown --watch",
     "build": "tsdown",
     "check-types": "tsc --noEmit",
-    "test": "bun test",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
     "size": "size-limit"
   },
   "keywords": [
@@ -39,11 +42,15 @@
   "license": "MIT",
   "devDependencies": {
     "@size-limit/file": "^11.2.0",
+    "@testing-library/jest-dom": "^6.9.1",
     "@types/node": "^22.13.8",
     "@types/react": "^19.2.2",
+    "@vitest/ui": "^3.2.4",
+    "jsdom": "^27.0.0",
     "size-limit": "^11.2.0",
     "tsdown": "^0.15.6",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
   },
   "peerDependencies": {
     "@measured/puck": "^0.20.0",
