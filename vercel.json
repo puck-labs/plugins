@@ -2,7 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "bun run build --filter=@puck-labs/web...",
   "outputDirectory": "apps/web/.next",
-  "framework": "nextjs",
   "installCommand": "bun install --no-save",
   "devCommand": "cd apps/web && bun dev",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./"
