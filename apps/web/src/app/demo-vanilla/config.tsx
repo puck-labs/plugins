@@ -1,6 +1,6 @@
 "use client";
 
-import type { Config, Slot } from "@measured/puck";
+import { DropZone, type Config } from "@measured/puck";
 import { withExpressions } from "@puck-labs/jsonata";
 import { cva } from "class-variance-authority";
 import type { ReactNode } from "react";
@@ -287,14 +287,14 @@ const FieldShowcase = ({
 
 export type SlotShowcaseProps = {
   title: string;
-  children: Slot;
+  children: string;
 };
 
-const SlotShowcase = ({ title, children: Children }: SlotShowcaseProps) => (
+const SlotShowcase = ({ title, children }: SlotShowcaseProps) => (
   <div className="mx-auto max-w-4xl rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-8 shadow-lg">
     <h2 className="mb-4 font-bold text-3xl text-slate-900">{title}</h2>
     <div className="min-h-[250px] rounded-xl border-2 border-indigo-300 border-dashed bg-white/80 p-8 backdrop-blur-sm">
-      <Children />
+      <DropZone zone={children} />
     </div>
     <p className="mt-4 text-center text-slate-600 text-sm italic">
       ↑ This is a Slot field - drag components here!
