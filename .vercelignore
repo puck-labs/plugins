@@ -1,7 +1,23 @@
-# Ignore everything except apps/web for deployment
-packages/*
-!apps/web
+# Ignore non-essential files for deployment
+# Note: packages/* must NOT be ignored as they contain workspace dependencies
+
 .github
 .changeset
+
+# Documentation (except in web app)
 *.md
 !apps/web/**/*.md
+!packages/*/README.md
+
+# Test files
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+coverage
+
+# Development configs
+.vscode
+.idea
+.zed
