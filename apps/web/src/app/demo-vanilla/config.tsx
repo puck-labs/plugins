@@ -87,7 +87,7 @@ const buttonVariants = cva(
     defaultVariants: {
       variant: "primary",
     },
-  },
+  }
 );
 
 // ============================================================================
@@ -468,7 +468,7 @@ const baseConfig: Config<{
           fetchList: async ({ query, filters }) => {
             // Simulate API delay
             await new Promise((resolve) =>
-              setTimeout(resolve, API_SIMULATION_DELAY_MS),
+              setTimeout(resolve, API_SIMULATION_DELAY_MS)
             );
 
             return mockExternalData
