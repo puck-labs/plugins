@@ -541,6 +541,117 @@ cd apps/web && bun build # Build for production
 }
 ```
 
+## Puck Component Typing Patterns
+
+### Idiomatic Type Usage
+
+Based on [official Puck demo components](https://github.com/puckeditor/puck/tree/main/apps/demo/config/blocks), follow these patterns:
+
+**1. Component Config Type Structure**
+
+```typescript
+// Props type uses Slot (array type) for field definitions
+export type MyComponentProps = {
+  title: string;
+  items: Slot;  // NOT SlotComponent!
+};
+
+// Config object typed at the entire Config level
+const config: Config<{
+  MyComponent: MyComponentProps;
+}> = {
+  components: {
+    MyComponent: {
+      fields: {
+        title: { type: "text" },
+        items: { type: "slot" }
+      },
+      defaultProps: {
+        title: "Default Title",
+        items: []  // Array works because props use Slot type
+      },
+      render: ({ title, items: Items }) => (
+        // Items is automatically transformed to SlotComponent by Puck
+        <div>
+          <h1>{title}</h1>
+          <Items />  {/* Render as component */}
+        </div>
+      )
+    }
+  }
+};
+```
+
+**2. Key Type Distinctions**
+
+- **`Slot`** - Array type for field definitions and defaultProps (`Slot` = `ComponentData[]`)
+- **`SlotComponent`** - Function component type that Puck transforms to during render
+- **`ComponentConfig<Props>`** - Generic for individual component config objects
+- **`Config<ComponentsMap>`** - Top-level config type mapping component names to prop types
+- **`PuckComponent<Props>`** - Function component type with injected `puck` context
+
+**3. Slot Field Pattern**
+
+When using slot fields, use `PuckComponent<Props>` to handle the automatic transformation:
+
+```typescript
+// ✅ CORRECT - Props use Slot type, PuckComponent handles transformation
+export type SlotContainerProps = {
+  title: string;
+  children: Slot;  // Field/config type (array)
+};
+
+// PuckComponent automatically transforms Slot → SlotComponent in render
+const SlotContainer: PuckComponent<SlotContainerProps> = ({
+  title,
+  children: Children
+}) => (
+  <div>
+    <h2>{title}</h2>
+    <Children />  {/* Automatically a SlotComponent function */}
+  </div>
+);
+```
+
+**Why `PuckComponent`?** It transforms `Slot` (array in config) → `SlotComponent` (function in render) automatically. One props type, no duplication.
+
+**4. Using PuckComponent Type**
+
+Use `PuckComponent<Props>` when you need access to Puck context:
+
+```typescript
+import type { PuckComponent } from "@measured/puck";
+
+export const Hero: PuckComponent<HeroProps> = ({
+  title,
+  description,
+  puck,  // Auto-injected by PuckComponent type
+}) => (
+  <section>
+    <h1>{title}</h1>
+    <p>{description}</p>
+    <button tabIndex={puck.isEditing ? -1 : undefined}>
+      Click Me
+    </button>
+  </section>
+);
+```
+
+**5. Anti-Patterns**
+
+❌ **Don't use `satisfies` on individual components** - Type at Config level instead
+❌ **Don't use `SlotComponent` in props type** - Use `Slot` and `PuckComponent<Props>` for render
+❌ **Don't manually type render function parameters** - Let `PuckComponent<Props>` handle it
+❌ **Don't create separate field vs render prop types** - One props type with `Slot`, `PuckComponent` transforms it
+❌ **Don't use `any` or type assertions** - Puck's types are complete and accurate
+
+**6. Official Examples**
+
+See these official Puck components for reference:
+- [Grid](https://github.com/puckeditor/puck/blob/main/apps/demo/config/blocks/Grid/index.tsx) - Slot field usage
+- [Heading](https://github.com/puckeditor/puck/blob/main/apps/demo/config/blocks/Heading/index.tsx) - WithLayout pattern
+- [Hero](https://github.com/puckeditor/puck/blob/main/apps/demo/config/blocks/Hero/Hero.tsx) - PuckComponent with context
+
 ## Notes for AI Assistants
 
 When implementing features across this monorepo:

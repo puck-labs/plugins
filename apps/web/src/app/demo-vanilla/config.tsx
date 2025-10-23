@@ -1,6 +1,6 @@
 "use client";
 
-import type { Config, Slot } from "@measured/puck";
+import type { Config, PuckComponent, Slot } from "@measured/puck";
 import { withExpressions } from "@puck-labs/jsonata";
 import { cva } from "class-variance-authority";
 import type { ReactNode } from "react";
@@ -87,7 +87,7 @@ const buttonVariants = cva(
     defaultVariants: {
       variant: "primary",
     },
-  }
+  },
 );
 
 // ============================================================================
@@ -290,7 +290,10 @@ export type SlotShowcaseProps = {
   children: Slot;
 };
 
-const SlotShowcase = ({ title, children: Children }: SlotShowcaseProps) => (
+const SlotShowcase: PuckComponent<SlotShowcaseProps> = ({
+  title,
+  children: Children,
+}) => (
   <div className="mx-auto max-w-4xl rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-8 shadow-lg">
     <h2 className="mb-4 font-bold text-3xl text-slate-900">{title}</h2>
     <div className="min-h-[250px] rounded-xl border-2 border-indigo-300 border-dashed bg-white/80 p-8 backdrop-blur-sm">
@@ -468,7 +471,7 @@ const baseConfig: Config<{
           fetchList: async ({ query, filters }) => {
             // Simulate API delay
             await new Promise((resolve) =>
-              setTimeout(resolve, API_SIMULATION_DELAY_MS)
+              setTimeout(resolve, API_SIMULATION_DELAY_MS),
             );
 
             return mockExternalData
