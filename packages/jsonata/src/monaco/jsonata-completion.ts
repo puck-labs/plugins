@@ -1,9 +1,17 @@
 /**
  * JSONata Completion Provider for Monaco Editor
  * Based on official JSONata functions.js
+ *
+ * Note: Monaco snippet syntax ${N:placeholder} is exempted from noTemplateCurlyInString in biome.json
  */
 
 import type * as Monaco from "monaco-editor";
+
+// Preview display constants
+const ARRAY_PREVIEW_MAX_ITEMS = 3;
+const PREVIEW_MAX_LENGTH = 80;
+const PREVIEW_TRUNCATE_LENGTH = 77;
+const ARRAY_SERIALIZED_MAX_LENGTH = 60;
 
 /**
  * JSONata built-in functions from functions.js
@@ -451,7 +459,45 @@ function escapeInlineMarkdown(value: string): string {
   return value.replace(/[`\\]/g, (match) => `\\${match}`).replace(/\n/g, " ");
 }
 
-function describeContextValue(value: unknown): { type: string; preview?: string } {
+// Helper: Create truncated preview string
+function createPreview(text: string): string {
+  return text.length > PREVIEW_MAX_LENGTH
+    ? `${text.slice(0, PREVIEW_TRUNCATE_LENGTH)}…`
+    : text;
+}
+
+// Helper: Generate array preview
+function getArrayPreview(arr: unknown[]): string | undefined {
+  const length = arr.length;
+  if (length === 0) {
+    return;
+  }
+
+  try {
+    const serialized = JSON.stringify(arr.slice(0, ARRAY_PREVIEW_MAX_ITEMS));
+    if (length > ARRAY_PREVIEW_MAX_ITEMS) {
+      return `${serialized?.slice(0, ARRAY_SERIALIZED_MAX_LENGTH)}…`;
+    }
+    return serialized;
+  } catch {
+    return;
+  }
+}
+
+// Helper: Generate object preview
+function getObjectPreview(obj: unknown): string | undefined {
+  try {
+    const json = JSON.stringify(obj);
+    return json ? createPreview(json) : undefined;
+  } catch {
+    return;
+  }
+}
+
+function describeContextValue(value: unknown): {
+  type: string;
+  preview?: string;
+} {
   if (value === null) {
     return { type: "null" };
   }
@@ -461,17 +507,10 @@ function describeContextValue(value: unknown): { type: string; preview?: string 
   }
 
   if (Array.isArray(value)) {
-    const length = value.length;
-    let preview: string | undefined;
-    if (length > 0) {
-      try {
-        const serialized = JSON.stringify(value.slice(0, 3));
-        preview = length > 3 ? `${serialized?.slice(0, 60)}…` : serialized;
-      } catch {
-        preview = undefined;
-      }
-    }
-    return { type: `array(${length})`, preview };
+    return {
+      type: `array(${value.length})`,
+      preview: getArrayPreview(value),
+    };
   }
 
   if (value instanceof Date) {
@@ -481,18 +520,10 @@ function describeContextValue(value: unknown): { type: string; preview?: string 
   const valueType = typeof value;
 
   if (valueType === "object") {
-    try {
-      const json = JSON.stringify(value);
-      if (json) {
-        return {
-          type: "object",
-          preview: json.length > 80 ? `${json.slice(0, 77)}…` : json,
-        };
-      }
-    } catch {
-      return { type: "object" };
-    }
-    return { type: "object" };
+    return {
+      type: "object",
+      preview: getObjectPreview(value),
+    };
   }
 
   if (valueType === "function") {
@@ -502,16 +533,15 @@ function describeContextValue(value: unknown): { type: string; preview?: string 
     };
   }
 
-  const stringValue = String(value);
   return {
     type: valueType,
-    preview: stringValue.length > 80 ? `${stringValue.slice(0, 77)}…` : stringValue,
+    preview: createPreview(String(value)),
   };
 }
 
 function buildContextEntries(
   monaco: typeof Monaco,
-  context: Record<string, unknown>,
+  context: Record<string, unknown>
 ): ContextEntry[] {
   const entries: ContextEntry[] = [];
   const seen = new Set<string>();
@@ -529,18 +559,20 @@ function buildContextEntries(
     markdown.appendMarkdown(`Type: \`${type}\``);
 
     if (preview) {
-      markdown.appendMarkdown(`\n\nPreview: \`${escapeInlineMarkdown(preview)}\``);
+      markdown.appendMarkdown(
+        `\n\nPreview: \`${escapeInlineMarkdown(preview)}\``
+      );
     }
 
     if (key === "$item") {
       markdown.appendMarkdown(
-        "\n\nCurrent array item available when editing repeatable fields.",
+        "\n\nCurrent array item available when editing repeatable fields."
       );
     }
 
     if (key === "$index") {
       markdown.appendMarkdown(
-        "\n\nZero-based index for the current array item in repeatable fields.",
+        "\n\nZero-based index for the current array item in repeatable fields."
       );
     }
 
@@ -563,7 +595,7 @@ function buildContextEntries(
  */
 export function createJsonataCompletionProvider(
   monaco: typeof Monaco,
-  getContextVariables: () => Record<string, unknown>,
+  getContextVariables: () => Record<string, unknown>
 ): Monaco.languages.CompletionItemProvider {
   return {
     provideCompletionItems: (model, position) => {
@@ -657,7 +689,7 @@ export function createJsonataCompletionProvider(
 
 export function createJsonataHoverProvider(
   monaco: typeof Monaco,
-  getContextVariables: () => Record<string, unknown>,
+  getContextVariables: () => Record<string, unknown>
 ): Monaco.languages.HoverProvider {
   return {
     provideHover: (model, position) => {
@@ -681,7 +713,7 @@ export function createJsonataHoverProvider(
           position.lineNumber,
           word.startColumn,
           position.lineNumber,
-          word.endColumn,
+          word.endColumn
         ),
         contents: [entry.documentation],
       };

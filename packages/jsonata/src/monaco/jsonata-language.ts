@@ -6,6 +6,27 @@
 import type * as Monaco from "monaco-editor";
 
 /**
+ * Regex patterns for Monaco tokenizer
+ * Extracted to module level for performance (avoid recreation on each tokenization)
+ */
+const COMMENT_START_REGEX = /\/\*/;
+const KEYWORDS_REGEX = /\b(?:and|or|in|true|false|null|function)\b/;
+const LAMBDA_SYMBOL_REGEX = /λ/;
+const DOLLAR_IDENTIFIER_REGEX = /\$[a-zA-Z_]\w*/;
+const NUMBER_REGEX = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[Ee][-+]?[0-9]+)?/;
+const DOUBLE_QUOTED_STRING_REGEX = /"([^"\\]|\\.)*"/;
+const SINGLE_QUOTED_STRING_REGEX = /'([^'\\]|\\.)*'/;
+const BACKTICK_IDENTIFIER_REGEX = /`[^`]*`/;
+const REGEX_LITERAL_REGEX = /\/(?:[^/\\\n]|\\.)+\/[img]*/;
+const MULTI_CHAR_OPERATOR_REGEX = /:=|~>|\?\?|\?:|\.\.|\*\*|!=|<=|>=/;
+const SINGLE_CHAR_OPERATOR_REGEX = /[.[\]{}(),@#;:?+\-*/%|=<>^&!~]/;
+const IDENTIFIER_REGEX = /[a-zA-Z_]\w*/;
+const WHITESPACE_REGEX = /\s+/;
+const COMMENT_CONTENT_REGEX = /[^/*]+/;
+const COMMENT_END_REGEX = /\*\//;
+const COMMENT_CHARS_REGEX = /[/*]/;
+
+/**
  * JSONata operators extracted from parser.js
  */
 export const JSONATA_OPERATORS = [
@@ -127,11 +148,11 @@ export function registerJsonataLanguage(monaco: typeof Monaco): void {
     tokenizer: {
       root: [
         // Comments
-        [/\/\*/, "comment", "@comment"],
+        [COMMENT_START_REGEX, "comment", "@comment"],
 
         // Keywords
         [
-          /\b(?:and|or|in|true|false|null|function)\b/,
+          KEYWORDS_REGEX,
           {
             cases: {
               "@keywords": "keyword",
@@ -141,11 +162,11 @@ export function registerJsonataLanguage(monaco: typeof Monaco): void {
         ],
 
         // Lambda symbol
-        [/λ/, "keyword"],
+        [LAMBDA_SYMBOL_REGEX, "keyword"],
 
         // Built-in functions (start with $)
         [
-          /\$[a-zA-Z_]\w*/,
+          DOLLAR_IDENTIFIER_REGEX,
           {
             cases: {
               "@default": "predefined",
@@ -154,40 +175,40 @@ export function registerJsonataLanguage(monaco: typeof Monaco): void {
         ],
 
         // Variables (start with $)
-        [/\$[a-zA-Z_]\w*/, "variable"],
+        [DOLLAR_IDENTIFIER_REGEX, "variable"],
 
         // Numbers (including scientific notation)
-        [/-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[Ee][-+]?[0-9]+)?/, "number"],
+        [NUMBER_REGEX, "number"],
 
         // Strings (double-quoted)
-        [/"([^"\\]|\\.)*"/, "string"],
+        [DOUBLE_QUOTED_STRING_REGEX, "string"],
 
         // Strings (single-quoted)
-        [/'([^'\\]|\\.)*'/, "string"],
+        [SINGLE_QUOTED_STRING_REGEX, "string"],
 
         // Quoted names (backticks)
-        [/`[^`]*`/, "identifier"],
+        [BACKTICK_IDENTIFIER_REGEX, "identifier"],
 
         // Regex literals
-        [/\/(?:[^/\\\n]|\\.)+\/[img]*/, "regexp"],
+        [REGEX_LITERAL_REGEX, "regexp"],
 
         // Operators (multi-char first)
-        [/:=|~>|\?\?|\?:|\.\.|\*\*|!=|<=|>=/, "operator"],
+        [MULTI_CHAR_OPERATOR_REGEX, "operator"],
 
         // Single-char operators
-        [/[.[\]{}(),@#;:?+\-*/%|=<>^&!~]/, "operator"],
+        [SINGLE_CHAR_OPERATOR_REGEX, "operator"],
 
         // Identifiers
-        [/[a-zA-Z_]\w*/, "identifier"],
+        [IDENTIFIER_REGEX, "identifier"],
 
         // Whitespace
-        [/\s+/, "white"],
+        [WHITESPACE_REGEX, "white"],
       ],
 
       comment: [
-        [/[^/*]+/, "comment"],
-        [/\*\//, "comment", "@pop"],
-        [/[/*]/, "comment"],
+        [COMMENT_CONTENT_REGEX, "comment"],
+        [COMMENT_END_REGEX, "comment", "@pop"],
+        [COMMENT_CHARS_REGEX, "comment"],
       ],
     },
   });

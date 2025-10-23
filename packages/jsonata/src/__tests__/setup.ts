@@ -11,7 +11,13 @@ import "@testing-library/jest-dom/vitest";
 // Polyfill ResizeObserver for @dnd-kit/dom (used by @measured/puck)
 // JSDOM doesn't provide ResizeObserver, but it's required by Puck's internals
 global.ResizeObserver = class ResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe() {
+    /* Intentionally empty - JSDOM polyfill for Puck's drag-and-drop */
+  }
+  unobserve() {
+    /* Intentionally empty - JSDOM polyfill for Puck's drag-and-drop */
+  }
+  disconnect() {
+    /* Intentionally empty - JSDOM polyfill for Puck's drag-and-drop */
+  }
 };

@@ -29,8 +29,14 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { ExpressionFieldProps } from "../components/expression-field";
 import { ExpressionField } from "../components/expression-field";
 import { ExpressionProvider } from "../expression-context";
-import * as expressionResolverModule from "../expression-resolver";
+import { evaluateExpression } from "../expression-resolver";
 import type { ExpressionFieldValue } from "../types";
+
+// === TEST CONSTANTS ===
+
+// Regex patterns for tab identification
+const STATIC_TAB_REGEX = /static/i;
+const DYNAMIC_TAB_REGEX = /dynamic/i;
 
 // === MOCKS ===
 
@@ -89,7 +95,9 @@ vi.mock("@measured/puck", () => ({
       value={String(value ?? "")}
     />
   ),
-  FieldLabel: ({ label }: { label: string }) => <label>{label}</label>,
+  FieldLabel: ({ label }: { label: string }) => (
+    <label htmlFor="test-field">{label}</label>
+  ),
 }));
 
 // === TEST UTILITIES ===
@@ -134,8 +142,8 @@ describe("ExpressionField Component", () => {
     test("tabs are disabled when readOnly=true", () => {
       renderExpressionField({ readOnly: true });
 
-      const staticTab = screen.getByRole("tab", { name: /static/i });
-      const dynamicTab = screen.getByRole("tab", { name: /dynamic/i });
+      const staticTab = screen.getByRole("tab", { name: STATIC_TAB_REGEX });
+      const dynamicTab = screen.getByRole("tab", { name: DYNAMIC_TAB_REGEX });
 
       expect(staticTab).toBeDisabled();
       expect(dynamicTab).toBeDisabled();
@@ -144,8 +152,8 @@ describe("ExpressionField Component", () => {
     test("read-only mode disables all interactions", () => {
       renderExpressionField({ readOnly: true });
 
-      const staticTab = screen.getByRole("tab", { name: /static/i });
-      const dynamicTab = screen.getByRole("tab", { name: /dynamic/i });
+      const staticTab = screen.getByRole("tab", { name: STATIC_TAB_REGEX });
+      const dynamicTab = screen.getByRole("tab", { name: DYNAMIC_TAB_REGEX });
 
       expect(staticTab).toBeDisabled();
       expect(dynamicTab).toBeDisabled();
@@ -158,7 +166,6 @@ describe("ExpressionField Component", () => {
 
       renderExpressionField({
         onChange,
-        // biome-ignore lint/suspicious/noExplicitAny: testing plain value normalization
         value: "plain-string" as any,
       });
 
@@ -186,7 +193,6 @@ describe("ExpressionField Component", () => {
 
     test("undefined value is handled gracefully", () => {
       renderExpressionField({
-        // biome-ignore lint/suspicious/noExplicitAny: testing undefined handling
         value: undefined as any,
       });
 
@@ -224,8 +230,7 @@ describe("ExpressionField Component", () => {
       });
 
       // Cast to vi.fn to access mock calls
-      const evaluator =
-        expressionResolverModule.evaluateExpression as ReturnType<typeof vi.fn>;
+      const evaluator = evaluateExpression as ReturnType<typeof vi.fn>;
       expect(evaluator).not.toHaveBeenCalled();
     });
 
@@ -233,8 +238,7 @@ describe("ExpressionField Component", () => {
       const onChange = vi.fn();
 
       // Cast to vi.fn and set up mock return value
-      const evaluator =
-        expressionResolverModule.evaluateExpression as ReturnType<typeof vi.fn>;
+      const evaluator = evaluateExpression as ReturnType<typeof vi.fn>;
       evaluator.mockResolvedValue({
         success: false,
         error: "Error",
@@ -286,8 +290,7 @@ describe("ExpressionField Component", () => {
       });
 
       // Cast to vi.fn to access mock calls
-      const evaluator =
-        expressionResolverModule.evaluateExpression as ReturnType<typeof vi.fn>;
+      const evaluator = evaluateExpression as ReturnType<typeof vi.fn>;
       expect(evaluator).not.toHaveBeenCalled();
     });
   });

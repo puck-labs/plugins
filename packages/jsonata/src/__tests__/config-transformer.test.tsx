@@ -403,7 +403,7 @@ describe("withExpressions", () => {
 
       // Original config should be unchanged
       expect(JSON.stringify(originalConfig)).toBe(
-        JSON.stringify(configSnapshot),
+        JSON.stringify(configSnapshot)
       );
     });
 
@@ -493,7 +493,7 @@ describe("withExpressions", () => {
       const result = withExpressions(config);
 
       expect(
-        result.components.TestComponent?.fields?.undefinedField,
+        result.components.TestComponent?.fields?.undefinedField
       ).toBeUndefined();
     });
 

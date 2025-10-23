@@ -33,5 +33,32 @@
         "noConsole": "off"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "**/__tests__/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/tests/**"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noMagicNumbers": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/monaco/jsonata-completion.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noTemplateCurlyInString": "off"
+          }
+        }
+      }
+    }
+  ]
 }

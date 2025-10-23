@@ -14,7 +14,7 @@
  * - Empty expressions
  */
 
-import { beforeEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import { evaluateExpression, resolveExpressions } from "../expression-resolver";
 import type { ExpressionFieldValue } from "../types";
 
@@ -54,7 +54,7 @@ describe("evaluateExpression", () => {
 
       const result = await evaluateExpression(
         "item.price * (1 - discount)",
-        context,
+        context
       );
 
       expect(result.success).toBe(true);
@@ -69,7 +69,7 @@ describe("evaluateExpression", () => {
         {
           item: { name: "Test" },
           index: 0,
-        },
+        }
       );
 
       expect(result.success).toBe(true);
@@ -103,7 +103,7 @@ describe("evaluateExpression", () => {
     test("returns object from expression", async () => {
       const result = await evaluateExpression(
         "{ 'name': 'Test', 'value': 42 }",
-        {},
+        {}
       );
 
       expect(result.success).toBe(true);

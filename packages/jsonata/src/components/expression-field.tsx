@@ -135,8 +135,7 @@ export function ExpressionField<T = unknown>({
 
   // Monaco references
   const monacoRef = useRef<typeof Monaco | null>(null);
-  const editorRef =
-    useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
   const disposablesRef = useRef<Monaco.IDisposable[]>([]);
 
   // Track if Monaco language has been registered
@@ -148,56 +147,86 @@ export function ExpressionField<T = unknown>({
   const evaluationErrorRef = useRef<string | undefined>(evaluationError);
   evaluationErrorRef.current = evaluationError;
 
-  const emitChange = useCallback(
-    (nextValue: ExpressionFieldValue<T>) => {
-      normalizedValueRef.current = nextValue;
-      try {
-        onChangeRef.current(nextValue);
-      } catch (error) {
-        console.error("[puck-jsonata] onChange handler threw:", error);
+  const emitChange = useCallback((nextValue: ExpressionFieldValue<T>) => {
+    normalizedValueRef.current = nextValue;
+    try {
+      onChangeRef.current(nextValue);
+    } catch (error) {
+      console.error("[puck-jsonata] onChange handler threw:", error);
+    }
+  }, []);
+
+  // Handle evaluation result and update state
+  const applyEvaluationResult = useCallback(
+    (
+      result:
+        | { success: true; value: unknown }
+        | { success: false; error: string }
+    ) => {
+      const latest = normalizedValueRef.current;
+      const nextValue: ExpressionFieldValue<T> = {
+        ...latest,
+        __mode__: "dynamic",
+        __expression__: latest.__expression__,
+        __staticValue__: latest.__staticValue__,
+      };
+
+      if (result.success) {
+        nextValue.__value__ = coerceValueForField<T>(result.value, field);
+        if (evaluationErrorRef.current !== undefined) {
+          setEvaluationError(undefined);
+        }
+        nextValue.__error__ = undefined;
+      } else {
+        nextValue.__value__ = latest.__value__;
+        nextValue.__error__ = result.error ?? "JSONata evaluation failed";
+        if (evaluationErrorRef.current !== nextValue.__error__) {
+          setEvaluationError(nextValue.__error__);
+        }
       }
+
+      emitChange(nextValue);
     },
-    []
+    [field, emitChange]
   );
 
   // Handle Monaco editor mount - register JSONata language and completion
-  const handleEditorMount: OnMount = useCallback(
-    (editor, monaco) => {
-      editorRef.current = editor;
-      monacoRef.current = monaco;
+  const handleEditorMount: OnMount = useCallback((editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
 
-      if (!monacoRegisteredRef.current) {
-        try {
-          registerJsonataLanguage(monaco);
-        } catch (error) {
-          console.error("Error registering JSONata language:", error);
-        }
-        monacoRegisteredRef.current = true;
-      }
-
-      disposablesRef.current.forEach((disposable) => disposable.dispose());
-      disposablesRef.current = [];
-
+    if (!monacoRegisteredRef.current) {
       try {
-        disposablesRef.current.push(
-          monaco.languages.registerCompletionItemProvider(
-            "jsonata",
-            createJsonataCompletionProvider(monaco, () => contextRef.current)
-          )
-        );
-
-        disposablesRef.current.push(
-          monaco.languages.registerHoverProvider(
-            "jsonata",
-            createJsonataHoverProvider(monaco, () => contextRef.current)
-          )
-        );
+        registerJsonataLanguage(monaco);
       } catch (error) {
-        console.error("Error registering JSONata providers:", error);
+        console.error("Error registering JSONata language:", error);
       }
-    },
-    []
-  );
+      monacoRegisteredRef.current = true;
+    }
+
+    for (const disposable of disposablesRef.current) {
+      disposable.dispose();
+    }
+    disposablesRef.current = [];
+
+    try {
+      disposablesRef.current.push(
+        monaco.languages.registerCompletionItemProvider(
+          "jsonata",
+          createJsonataCompletionProvider(monaco, () => contextRef.current)
+        )
+      );
+
+      disposablesRef.current.push(
+        monaco.languages.registerHoverProvider(
+          "jsonata",
+          createJsonataHoverProvider(monaco, () => contextRef.current)
+        )
+      );
+    } catch (error) {
+      console.error("Error registering JSONata providers:", error);
+    }
+  }, []);
 
   const handleEditorUnmount = useCallback(() => {
     const monaco = monacoRef.current;
@@ -209,7 +238,9 @@ export function ExpressionField<T = unknown>({
       }
     }
 
-    disposablesRef.current.forEach((disposable) => disposable.dispose());
+    for (const disposable of disposablesRef.current) {
+      disposable.dispose();
+    }
     disposablesRef.current = [];
 
     editorRef.current = null;
@@ -243,7 +274,7 @@ export function ExpressionField<T = unknown>({
         const clearedValue: ExpressionFieldValue<T> = {
           ...latest,
         };
-        delete clearedValue.__error__;
+        clearedValue.__error__ = undefined;
         emitChange(clearedValue);
       }
 
@@ -257,6 +288,7 @@ export function ExpressionField<T = unknown>({
     (async () => {
       const result = await evaluateExpression<T>(trimmedExpression, context);
 
+      // Check if evaluation is still valid (not stale)
       if (
         currentVersion !== evaluationVersion.current ||
         modeAtEvalStart !== currentMode ||
@@ -265,32 +297,15 @@ export function ExpressionField<T = unknown>({
         return;
       }
 
-      const latest = normalizedValueRef.current;
-      const nextValue: ExpressionFieldValue<T> = {
-        ...latest,
-        __mode__: "dynamic",
-        __expression__: latest.__expression__,
-        __staticValue__: latest.__staticValue__,
-      };
-
-      if (result.success) {
-        nextValue.__value__ = coerceValueForField<T>(result.value, field);
-        if (evaluationErrorRef.current !== undefined) {
-          setEvaluationError(undefined);
-        }
-        delete nextValue.__error__;
-      } else {
-        nextValue.__value__ = latest.__value__;
-        nextValue.__error__ =
-          result.error ?? "JSONata evaluation failed";
-        if (evaluationErrorRef.current !== nextValue.__error__) {
-          setEvaluationError(nextValue.__error__);
-        }
-      }
-
-      emitChange(nextValue);
+      applyEvaluationResult(result);
     })();
-  }, [context, currentMode, debouncedExpression, emitChange, field]);
+  }, [
+    context,
+    currentMode,
+    debouncedExpression,
+    applyEvaluationResult,
+    emitChange,
+  ]);
 
   // Sync local error state with incoming metadata
   useEffect(() => {
@@ -308,13 +323,13 @@ export function ExpressionField<T = unknown>({
     if (!incomingError && evaluationErrorRef.current) {
       setEvaluationError(undefined);
     }
-  }, [currentMode, normalizedValue.__error__]);
+  }, [currentMode, normalizedValue.__error__, evaluationError]);
 
   // Update Monaco markers when error state changes
   useEffect(() => {
     const monaco = monacoRef.current;
     const editor = editorRef.current;
-    if (!monaco || !editor) {
+    if (!(monaco && editor)) {
       return;
     }
 
@@ -349,15 +364,13 @@ export function ExpressionField<T = unknown>({
       __mode__: newMode,
     };
 
-    delete nextValue.__error__;
+    nextValue.__error__ = undefined;
     if (evaluationErrorRef.current !== undefined) {
       setEvaluationError(undefined);
     }
 
-    if (newMode === "static") {
-      if (normalizedValue.__staticValue__ !== undefined) {
-        nextValue.__value__ = normalizedValue.__staticValue__;
-      }
+    if (newMode === "static" && normalizedValue.__staticValue__ !== undefined) {
+      nextValue.__value__ = normalizedValue.__staticValue__;
     }
 
     emitChange(nextValue);
@@ -370,7 +383,7 @@ export function ExpressionField<T = unknown>({
       __staticValue__: newValue,
     };
 
-    delete nextValue.__error__;
+    nextValue.__error__ = undefined;
     emitChange(nextValue);
   };
 
@@ -384,7 +397,7 @@ export function ExpressionField<T = unknown>({
       __expression__: newExpression,
     };
 
-    delete nextValue.__error__;
+    nextValue.__error__ = undefined;
     emitChange(nextValue);
   };
 

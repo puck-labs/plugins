@@ -23,7 +23,7 @@
     "dist"
   ],
   "scripts": {
-    "dev": "tsdown --watch",
+    "dev": "tsdown --watch --ignore-watch .turbo",
     "build": "tsdown",
     "check-types": "tsc --noEmit",
     "test": "vitest run",
