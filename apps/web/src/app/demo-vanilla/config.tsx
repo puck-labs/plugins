@@ -294,7 +294,7 @@ const SlotShowcase = ({ title, children: Children }: SlotShowcaseProps) => (
   <div className="mx-auto max-w-4xl rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 p-8 shadow-lg">
     <h2 className="mb-4 font-bold text-3xl text-slate-900">{title}</h2>
     <div className="min-h-[250px] rounded-xl border-2 border-indigo-300 border-dashed bg-white/80 p-8 backdrop-blur-sm">
-      <Children />
+      {Children}
     </div>
     <p className="mt-4 text-center text-slate-600 text-sm italic">
       ↑ This is a Slot field - drag components here!

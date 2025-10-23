@@ -22,16 +22,19 @@ Puck Config → Config Transformer → Expression Evaluation → Metadata Stripp
 ### Key Components
 
 1. **Config Transformation Layer**
+
    - Transforms Puck field config to add static/dynamic mode switcher
    - Static mode: Uses Puck's existing field rendering (no changes)
    - Dynamic mode: Shows JSONata expression editor with syntax highlighting
 
 2. **Expression Evaluation Engine**
+
    - Evaluates JSONata expressions with correct scope
    - Handles scoped variables for array contexts (`$item`, `$index`)
    - Performs pre-render type checking to catch mismatches
 
 3. **Metadata Stripping Pipeline**
+
    - Strips all expression metadata (`__expression__`, `__mode__`, etc.)
    - Returns clean data matching Puck's expected schema
    - Ensures components receive original data format
@@ -68,6 +71,7 @@ bun check
 ## Monorepo Structure
 
 This is a Bun workspace-based monorepo:
+
 - `apps/*` - Application packages (web, native, etc.)
 - `packages/*` - Shared library packages (core library lives here)
 - Root `package.json` defines workspace configuration
@@ -75,6 +79,7 @@ This is a Bun workspace-based monorepo:
 ## Type Safety Requirements
 
 ### TypeScript Configuration
+
 - **Target:** ESNext with bundler module resolution
 - **Strict mode:** Enabled with additional safety checks
   - `noUncheckedIndexedAccess: true`
@@ -84,7 +89,9 @@ This is a Bun workspace-based monorepo:
 - **Module system:** ESM with `verbatimModuleSyntax`
 
 ### Expression Type Validation
+
 Expressions must return correct data types:
+
 - Primitives: `boolean`, `string`, `number`, `enum` values
 - Arrays: Complex case requiring scoped variables
 - Validation: Pre-render type checking to catch mismatches
@@ -94,6 +101,7 @@ Expressions must return correct data types:
 This project uses **Ultracite** (Biome-based) for code quality enforcement with zero configuration.
 
 Key standards enforced by Ultracite:
+
 - Strict accessibility (a11y) compliance
 - No `any` types, no TypeScript enums, no namespaces
 - Arrow functions over function expressions
@@ -116,21 +124,25 @@ Run `bun check` before committing to auto-fix issues.
 ## Architectural Decisions
 
 ### Library-First Approach (95% confidence)
+
 - **JSONata evaluation:** Use official `jsonata` npm package (never build parser)
 - **Syntax highlighting:** Use existing CodeMirror/Monaco extensions
 - **Type validation:** Runtime validation using Zod or similar (85% confident vs TypeScript inference 60%)
 
 ### Config Transformation Strategy (85% confidence)
+
 - **Approach:** Higher-order function that wraps Puck config
 - **Alternative:** Babel/SWC plugin (40% confident - too complex for MVP)
 - **Reversible:** Yes - can be removed by unwrapping config
 
 ### Metadata Stripping (90% confidence)
+
 - **Approach:** Recursive traversal before passing to Puck
 - **Critical:** Must handle nested objects, arrays, and circular references
 - **Irreversible decision:** Once stripped, cannot recover expression metadata
 
 ### Array Scoping Implementation (70% confidence)
+
 - **Approach:** Context provider pattern with scope injection
 - **Complexity:** 8 story points (architecture decision required)
 - **Risk:** Nested arrays may require recursive scope stacking
@@ -138,29 +150,35 @@ Run `bun check` before committing to auto-fix issues.
 ## Failure Modes (Ranked by Impact)
 
 ### CATASTROPHIC
+
 1. **Metadata leakage to components** - Components break on unexpected properties
 2. **Type mismatch not caught** - Runtime errors in production render
 
 ### HIGH
+
 3. **Array scoping fails** - `$item`/`$index` undefined in expressions
 4. **Expression syntax error** - No helpful error message to user
 5. **Circular reference in data** - Infinite loop during metadata stripping
 
 ### MEDIUM
+
 6. **Missing syntax highlighting** - Poor developer experience
 7. **Slow evaluation** - UI lag on complex expressions
 
 ### LOW
+
 8. **No expression validation** - Valid JSONata but semantically wrong
 9. **Missing type hints** - User doesn't know available variables
 
 ## Dependencies
 
 **Build tools:**
+
 - Bun 1.2.23+ (package manager and runtime)
 - Biome via Ultracite 5.6.2 (linting/formatting)
 
 **Core libraries (to be added):**
+
 - `jsonata` - Official JSONata implementation
 - `@puckjs/puck` - Puck editor core
 - TBD: Syntax highlighting library
@@ -169,6 +187,7 @@ Run `bun check` before committing to auto-fix issues.
 ## Testing Strategy
 
 **Required test coverage:**
+
 - Unit tests: Config transformer for each Puck field type
 - Integration tests: Expression evaluation with scoping
 - Type validation: Mismatch detection for primitives and arrays
@@ -176,9 +195,10 @@ Run `bun check` before committing to auto-fix issues.
 - Regression tests: Existing Puck configs work unchanged
 
 **Test execution:**
-- Individual test: `bun test <file-path>`
-- Watch mode: `bun test --watch`
-- Coverage: `bun test --coverage`
+
+- Individual test: `bun run test <file-path>`
+- Watch mode: `bun run test --watch`
+- Coverage: `bun run test --coverage`
 
 ## Common Pitfalls to Avoid
 
@@ -203,11 +223,13 @@ Run `bun check` before committing to auto-fix issues.
 ## Decision Framework
 
 ### Reversibility Check (before major decisions)
+
 1. **Type 2A (Easy rollback):** < 1 minute - Just do it
 2. **Type 2B (Rollback with effort):** < 5 minutes - Ship quickly
 3. **Type 1 (One-way door):** > 30 minutes - Deep analysis required
 
 ### Confidence Scale
+
 - **70-85%:** Confident - Ship with monitoring
 - **85-95%:** Very confident - Ship immediately
 - **50-70%:** More likely than not - Try first with backup plan
@@ -216,11 +238,13 @@ Run `bun check` before committing to auto-fix issues.
 ## File Organization Principles
 
 Follow **journey-centric design** (not component-centric):
+
 - Group files by user journey or feature domain
 - Keep related logic together (avoid utils/helpers sprawl)
 - Example: `/config-transformer/` contains all transformation logic
 
 **Forbidden patterns:**
+
 - `Manager`, `Helper`, `Utils` in file names (vague responsibility)
 - Multiple versions of same interface (`interfaceV2`, `interface_old`)
 - Silent failures or swallowed errors
@@ -228,6 +252,7 @@ Follow **journey-centric design** (not component-centric):
 ## Notes for AI Assistants
 
 When implementing features:
+
 1. **Apply inversion first:** List all failure modes before solutions
 2. **Check for libraries:** Search npm before writing custom code
 3. **Provide confidence levels:** "X% confident because [evidence]"

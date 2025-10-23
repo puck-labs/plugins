@@ -21,7 +21,7 @@ bun dev:web
 bun build
 
 # Run tests
-bun test
+bun run test
 ```
 
 ## Project Structure
@@ -44,7 +44,7 @@ puck-labs/
 | `bun build`       | Build all packages (uses Turborepo caching) |
 | `bun check`       | Lint and format code                        |
 | `bun check-types` | TypeScript validation                       |
-| `bun test`        | Run all tests                               |
+| `bun run test`    | Run all tests                               |
 
 ### Creating a Changeset
 

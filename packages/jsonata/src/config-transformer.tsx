@@ -60,7 +60,7 @@ export function withExpressions<T extends Config>(config: T): T {
       const resolvedProps = resolveExpressions(props);
 
       // Call original render with clean props
-      return OriginalRender(resolvedProps);
+      return OriginalRender(resolvedProps as any);
     };
 
     transformedConfig.components[componentKey] = {

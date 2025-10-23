@@ -137,7 +137,7 @@ export function resolveExpressions<T = unknown>(
     const resolved = resolveFieldValue(data);
     // If resolved value is an object, recursively resolve it too
     if (resolved !== null && typeof resolved === "object") {
-      return resolveExpressions(resolved, visited);
+      return resolveExpressions(resolved, visited) as any;
     }
     return resolved as T;
   }

@@ -539,10 +539,7 @@ function describeContextValue(value: unknown): {
   };
 }
 
-function buildContextEntries(
-  monaco: typeof Monaco,
-  context: Record<string, unknown>
-): ContextEntry[] {
+function buildContextEntries(context: Record<string, unknown>): ContextEntry[] {
   const entries: ContextEntry[] = [];
   const seen = new Set<string>();
 
@@ -554,27 +551,26 @@ function buildContextEntries(
     seen.add(key);
 
     const { type, preview } = describeContextValue(value);
-    const markdown = new monaco.MarkdownString();
-    markdown.appendMarkdown(`**${key}**\n\n`);
-    markdown.appendMarkdown(`Type: \`${type}\``);
+    let markdownContent = `**${key}**\n\n`;
+    markdownContent += `Type: \`${type}\``;
 
     if (preview) {
-      markdown.appendMarkdown(
-        `\n\nPreview: \`${escapeInlineMarkdown(preview)}\``
-      );
+      markdownContent += `\n\nPreview: \`${escapeInlineMarkdown(preview)}\``;
     }
 
     if (key === "$item") {
-      markdown.appendMarkdown(
-        "\n\nCurrent array item available when editing repeatable fields."
-      );
+      markdownContent +=
+        "\n\nCurrent array item available when editing repeatable fields.";
     }
 
     if (key === "$index") {
-      markdown.appendMarkdown(
-        "\n\nZero-based index for the current array item in repeatable fields."
-      );
+      markdownContent +=
+        "\n\nZero-based index for the current array item in repeatable fields.";
     }
+
+    const markdown: Monaco.IMarkdownString = {
+      value: markdownContent,
+    };
 
     const detailPrefix =
       key === "$item" || key === "$index" ? "Array scope" : "Context variable";
@@ -598,7 +594,7 @@ export function createJsonataCompletionProvider(
   getContextVariables: () => Record<string, unknown>
 ): Monaco.languages.CompletionItemProvider {
   return {
-    provideCompletionItems: (model, position) => {
+    provideCompletionItems: (model: any, position: any) => {
       const suggestions: Monaco.languages.CompletionItem[] = [];
 
       const word = model.getWordUntilPosition(position);
@@ -657,7 +653,7 @@ export function createJsonataCompletionProvider(
       });
 
       // Add context variables
-      const contextEntries = buildContextEntries(monaco, getContextVariables());
+      const contextEntries = buildContextEntries(getContextVariables());
       for (const entry of contextEntries) {
         suggestions.push({
           label: entry.label,
@@ -692,13 +688,13 @@ export function createJsonataHoverProvider(
   getContextVariables: () => Record<string, unknown>
 ): Monaco.languages.HoverProvider {
   return {
-    provideHover: (model, position) => {
+    provideHover: (model: any, position: any) => {
       const word = model.getWordAtPosition(position);
       if (!word) {
         return null;
       }
 
-      const contextEntries = buildContextEntries(monaco, getContextVariables());
+      const contextEntries = buildContextEntries(getContextVariables());
       const candidateLabels = new Set([word.word, `$${word.word}`]);
       const entry = contextEntries.find((item) =>
         candidateLabels.has(item.label)

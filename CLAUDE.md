@@ -42,6 +42,7 @@ bun check
 ```
 
 **Workspace filtering:** Use `--filter` to target specific workspaces:
+
 ```bash
 bun run --filter <workspace-name> <script>
 bun run --filter jsonata test
@@ -64,10 +65,11 @@ Turborepo provides intelligent caching and parallel task execution:
 bun dev          # Parallel dev servers with hot reload
 bun build        # Cached builds with dependency awareness
 bun check-types  # Type-check all packages in parallel
-bun test         # Run all tests with caching
+bun run test         # Run all tests
 ```
 
 **Key features:**
+
 - **Build caching:** Skips unchanged packages
 - **Dependency awareness:** Builds packages in correct order
 - **Parallel execution:** Runs independent tasks concurrently
@@ -80,12 +82,14 @@ Configuration in `turbo.json` defines task dependencies and outputs.
 Libraries in `packages/*` use **tsdown 0.15.6** for TypeScript bundling:
 
 **Features:**
+
 - Automatic TypeScript declaration (.d.ts) generation
 - Dual ESM/CJS output for maximum compatibility
 - Built on Rolldown (Rust) for fast builds
 - Zero-config for standard use cases
 
 **Example package structure:**
+
 ```
 packages/jsonata/
 ├── src/
@@ -103,6 +107,7 @@ packages/jsonata/
 ### TypeScript Configuration
 
 Base config in `tsconfig.base.json` enforces strict safety:
+
 - Target: ESNext with bundler module resolution
 - Strict mode + additional checks:
   - `noUncheckedIndexedAccess: true` (array access safety)
@@ -111,10 +116,13 @@ Base config in `tsconfig.base.json` enforces strict safety:
 - Module: ESM only, no CommonJS
 
 **Workspace tsconfigs extend from base:**
+
 ```json
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { /* workspace-specific overrides */ }
+  "compilerOptions": {
+    /* workspace-specific overrides */
+  }
 }
 ```
 
@@ -123,6 +131,7 @@ Base config in `tsconfig.base.json` enforces strict safety:
 This project uses **Ultracite 5.6.2** (zero-config Biome wrapper) with strict standards:
 
 **Enforced rules:**
+
 - No `any` types, TypeScript `enum`, or `namespace`
 - Arrow functions preferred over `function` expressions
 - `const` for single-assignment variables
@@ -131,12 +140,14 @@ This project uses **Ultracite 5.6.2** (zero-config Biome wrapper) with strict st
 - Accessibility: a11y compliance enforced
 
 **Ignored paths** (see `biome.json`):
+
 - `.next`, `dist`, `.turbo`, `dev-dist` (build outputs)
 - `.zed`, `.vscode` (editor configs)
 - `routeTree.gen.ts` (generated files)
 - `src-tauri`, `.expo`, `.wrangler`, `.svelte-kit` (framework internals)
 
 **Pre-commit workflow:**
+
 ```bash
 bun check          # Auto-fix formatting and linting
 bun check-types    # Verify TypeScript correctness
@@ -145,6 +156,7 @@ bun check-types    # Verify TypeScript correctness
 ## Critical Constraints
 
 ### Timeline Budget
+
 - **Total:** 16 hours over 4 days
 - **Story points:** Use instead of time estimates
   - 1 point = Trivial (config change)
@@ -154,6 +166,7 @@ bun check-types    # Verify TypeScript correctness
   - 13+ points = Too large, break down
 
 ### Technical Requirements
+
 - **Zero breaking changes** to existing Puck configs
 - **Library-first approach:** Use production libraries over custom code
 - **Type safety:** Strict TypeScript with runtime validation where needed
@@ -162,7 +175,9 @@ bun check-types    # Verify TypeScript correctness
 ## Architecture Principles
 
 ### 1. Library-First (95% confidence)
+
 **Before writing custom code, check:**
+
 1. Does a production library exist? (npm, crates.io, etc.)
 2. Is it maintained and battle-tested?
 3. Does it solve 80%+ of the problem?
@@ -170,12 +185,15 @@ bun check-types    # Verify TypeScript correctness
 **If yes → Use it. If no → Justify in code review.**
 
 **Example decisions:**
+
 - JSONata evaluation: `jsonata` npm package (never build parser)
 - Syntax highlighting: CodeMirror/Monaco extensions
 - Type validation: Zod or similar (runtime checks)
 
 ### 2. Journey-Centric Code Organization
+
 **Wrong (component-centric):**
+
 ```
 /components/Button
 /components/Form
@@ -183,6 +201,7 @@ bun check-types    # Verify TypeScript correctness
 ```
 
 **Right (journey-centric):**
+
 ```
 /journeys/checkout/
   - CheckoutFlow.tsx
@@ -194,15 +213,18 @@ bun check-types    # Verify TypeScript correctness
 Goal: Entire feature fits in one developer's head.
 
 ### 3. Make Illegal States Unrepresentable
+
 **Wrong:**
+
 ```typescript
 interface User {
   isLoggedIn: boolean;
-  username?: string;  // ❌ Can be logged in with no username
+  username?: string; // ❌ Can be logged in with no username
 }
 ```
 
 **Right:**
+
 ```typescript
 type User =
   | { type: "anonymous" }
@@ -210,40 +232,46 @@ type User =
 ```
 
 ### 4. Atomic Migrations Only
+
 When changing boundaries, migrate EVERYTHING atomically:
+
 - Change interface → Update ALL consumers NOW
 - Delete old code → No `_old`, `_legacy`, `_v2` suffixes
 - One version only → Eliminates cognitive split
 
 **Forbidden:**
+
 ```typescript
-function getUser(id: string): User       // Old way
-function getUserV2(id: string, opts: Options): User  // ❌ Brain explodes
+function getUser(id: string): User; // Old way
+function getUserV2(id: string, opts: Options): User; // ❌ Brain explodes
 ```
 
 **Required:**
+
 ```typescript
-function getUser(id: string, opts?: Options): User  // ✅ One truth
+function getUser(id: string, opts?: Options): User; // ✅ One truth
 ```
 
 ## Testing Strategy
 
 **Test execution:**
+
 ```bash
 # Run all tests in workspace
-bun test
+bun run test
 
 # Run specific test file
-bun test path/to/file.test.ts
+bun run test path/to/file.test.ts
 
 # Watch mode for TDD
-bun test --watch
+bun run test --watch
 
 # Coverage report
-bun test --coverage
+bun run test --coverage
 ```
 
 **Required coverage areas:**
+
 - Unit: Each public API function
 - Integration: Cross-package interactions
 - Type safety: Runtime validation matches TypeScript types
@@ -262,11 +290,13 @@ bun test --coverage
 ## Decision Framework
 
 ### Reversibility Check (Before Major Decisions)
+
 **Type 2A (Easy rollback):** < 1 minute → Just do it
 **Type 2B (Rollback with effort):** < 5 minutes → Ship quickly with monitoring
 **Type 1 (One-way door):** > 30 minutes → Deep analysis required
 
 ### Confidence Scale
+
 - **95-100%:** Mathematical certainty (only for proven theorems)
 - **85-95%:** Very confident → Ship immediately
 - **70-85%:** Confident → Ship with monitoring
@@ -287,12 +317,14 @@ bun changeset
 ```
 
 This will:
+
 1. Prompt you to select which packages changed
 2. Ask for the semver bump type (major/minor/patch)
 3. Request a description for the changelog
 4. Create a `.changeset/*.md` file
 
 **When to create changesets:**
+
 - New features → `minor`
 - Bug fixes → `patch`
 - Breaking changes → `major`
@@ -353,6 +385,7 @@ bun size
 ```
 
 **When size limit is exceeded:**
+
 1. Analyze what caused the increase (new dependency?)
 2. Consider code splitting or lazy loading
 3. If justified, increase limit in PR with explanation
@@ -382,17 +415,20 @@ bun dev
 The web demo automatically deploys to Vercel on every push to `main`.
 
 **Configuration** (`vercel.json`):
+
 - Build command uses Turborepo for caching
 - Only deploys `apps/web` (ignores packages)
 - Bun is used for installation
 
 **Environment setup:**
+
 1. Connect GitHub repo to Vercel
 2. Vercel auto-detects Next.js + Turborepo
 3. Set build command: `turbo run build --filter=@puck-labs/web`
 4. Deployments happen automatically
 
 **Preview deployments:**
+
 - Every PR gets a preview URL
 - Test changes before merging
 - Share demos with stakeholders
@@ -404,6 +440,7 @@ GitHub Actions run on every push and pull request.
 ### CI Workflow (`.github/workflows/ci.yml`)
 
 Runs in parallel:
+
 1. **Lint & Format** - Biome checks all files
 2. **Type Check** - TypeScript validation across workspace
 3. **Build** - Turborepo cached builds
@@ -415,11 +452,13 @@ Runs in parallel:
 ### Release Workflow (`.github/workflows/release.yml`)
 
 Runs on push to `main`:
+
 1. Checks for pending changesets
 2. If found: Creates "Version Packages" PR
 3. If version PR merged: Publishes to npm
 
 **Required secrets:**
+
 - `GITHUB_TOKEN` - Auto-provided by GitHub
 - `NPM_TOKEN` - Add in repo settings for publishing
 
@@ -430,44 +469,51 @@ Runs on push to `main`:
 bunx biome ci .
 
 # Full pre-push check
-bun check && bun check-types && bun build && bun test
+bun check && bun check-types && bun build && bun run test
 ```
 
 ## Workspace-Specific Guidance
 
 ### packages/jsonata
+
 JSONata expression engine for Puck editor.
 
 **See:** `/packages/jsonata/CLAUDE.md` for detailed architecture, data flow, and implementation requirements.
 
 **Key responsibilities:**
+
 - Config transformation (add static/dynamic mode)
 - Expression evaluation with scoping
 - Metadata stripping before Puck render
 - Type validation at runtime
 
 ### apps/web
+
 Next.js 15.5 demo application showcasing JSONata expressions.
 
 **Stack:**
+
 - Framework: Next.js 15.5 (App Router)
 - Styling: Tailwind CSS 3.4.20
 - Runtime: React 19
 - Deployment: Vercel (automatic)
 
 **Key features:**
+
 - Demonstrates `@puck-labs/jsonata` integration
 - Live expression evaluation examples
 - Puck editor with dynamic properties
 - Optional CSS styling showcase
 
 **Development:**
+
 ```bash
 bun dev:web              # Start dev server on localhost:3000
 cd apps/web && bun build # Build for production
 ```
 
 **Adding new pages:**
+
 - Create `src/app/<route>/page.tsx` for App Router
 - Use Tailwind CSS classes for styling
 - Import `@puck-labs/jsonata` as workspace dependency
@@ -481,6 +527,7 @@ cd apps/web && bun build # Build for production
 5. Run `bun install` to link workspace dependencies
 
 **Workspace package.json template:**
+
 ```json
 {
   "name": "@puck-labs/<workspace-name>",
@@ -508,6 +555,7 @@ When implementing features across this monorepo:
 8. **Respect workspace boundaries:** Packages should never import from apps
 
 **Response format for complex decisions:**
+
 ```xml
 <inversion>Failure modes: [list all ways it could fail]</inversion>
 <solution confidence="85%">Primary approach: [description with evidence]</solution>

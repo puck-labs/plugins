@@ -247,6 +247,14 @@ export function ExpressionField<T = unknown>({
     monacoRef.current = null;
   }, []);
 
+  // Cleanup editor on unmount
+  useEffect(
+    () => () => {
+      handleEditorUnmount();
+    },
+    [handleEditorUnmount]
+  );
+
   // Debounce expression changes (typing)
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -454,7 +462,6 @@ export function ExpressionField<T = unknown>({
                 height="200px"
                 onChange={handleExpressionChange}
                 onMount={handleEditorMount}
-                onUnmount={handleEditorUnmount}
                 options={{
                   minimap: { enabled: false },
                   lineNumbers: "on",

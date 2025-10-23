@@ -15,6 +15,7 @@ export type ExpressionFieldValue<T = unknown> = {
   __expression__?: string; // JSONata expression (only in dynamic mode)
   __value__: T; // Actual value (static or evaluated result)
   __staticValue__?: T; // Original static value (preserved when switching to dynamic mode)
+  __error__?: string; // Evaluation error message (only when expression fails)
 };
 
 /**
@@ -33,11 +34,9 @@ export type ExpressionContext = {
   [key: string]: unknown;
 };
 
-export type EvaluationResult<T = unknown> = {
-  success: boolean;
-  value?: T;
-  error?: string;
-};
+export type EvaluationResult<T = unknown> =
+  | { success: true; value: T }
+  | { success: false; error: string };
 
 /**
  * Primitive field types that can be wrapped with expression support

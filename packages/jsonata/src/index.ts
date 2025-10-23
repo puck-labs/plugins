@@ -21,7 +21,6 @@ export { evaluateExpression, resolveExpressions } from "./expression-resolver";
 export type {
   EvaluationResult,
   ExpressionConfig,
-  ExpressionContext,
   ExpressionFieldValue,
   ExpressionMode,
   PrimitiveFieldType,
