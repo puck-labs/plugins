@@ -26,10 +26,10 @@
     "dev": "tsdown --watch --ignore-watch .turbo",
     "build": "tsdown",
     "check-types": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage",
+    "test": "bunx vitest run",
+    "test:watch": "bunx vitest",
+    "test:ui": "bunx vitest --ui",
+    "test:coverage": "bunx vitest run --coverage",
     "size": "size-limit"
   },
   "keywords": [
