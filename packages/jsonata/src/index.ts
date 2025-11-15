@@ -8,6 +8,8 @@
 
 // Re-export jsonata for convenience
 export { default as jsonata } from "jsonata";
+// Array scoping helper for $item and $index
+export { ArrayScopeProvider } from "./components/array-scope-provider";
 export { ExpressionField } from "./components/expression-field";
 export { withExpressions } from "./config-transformer";
 // React Context for expression scope

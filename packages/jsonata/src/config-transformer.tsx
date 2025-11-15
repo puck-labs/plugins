@@ -116,9 +116,17 @@ function transformFields(fields: unknown): Record<string, Field> {
           );
         },
       };
+    } else if (field.type === "array" && "arrayFields" in field) {
+      // Transform array fields to support expressions in array items
+      // Recursively transform the arrayFields (schema for each item)
+      // Note: Scoping with $item and $index requires user-side implementation
+      // as Puck doesn't expose hooks for per-item context injection
+      transformedFields[fieldKey] = {
+        ...field,
+        arrayFields: transformFields(field.arrayFields),
+      };
     } else {
-      // Leave complex fields unchanged (array, object, slot, external, custom)
-      // These will be handled in future iterations
+      // Leave other complex fields unchanged (object, slot, external, custom)
       transformedFields[fieldKey] = field;
     }
   }

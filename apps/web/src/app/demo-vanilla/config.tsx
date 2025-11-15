@@ -1,7 +1,7 @@
 "use client";
 
 import type { Config, PuckComponent, Slot } from "@measured/puck";
-import { withExpressions } from "@puck-labs/jsonata";
+import { ArrayScopeProvider, withExpressions } from "@puck-labs/jsonata";
 import { cva } from "class-variance-authority";
 import type { ReactNode } from "react";
 import "@puck-labs/jsonata/styles.css";
@@ -330,6 +330,88 @@ const ButtonBlock = ({ label, variant }: ButtonBlockProps) => (
 );
 
 // ============================================================================
+// ARRAY SCOPING DEMO COMPONENT
+// Demonstrates how to use ArrayScopeProvider for $item and $index
+// ============================================================================
+
+export type ArrayScopingDemoProps = {
+  title: string;
+  items: Array<{
+    name: string;
+    price: number;
+    category: string;
+  }>;
+  // This field can use expressions with $item and $index
+  // Example: "Item #" & ($index + 1) & ": " & $item.name & " - $" & $item.price
+  itemTemplate: string;
+};
+
+const ArrayScopingDemo = ({
+  title,
+  items,
+  itemTemplate,
+}: ArrayScopingDemoProps) => (
+  <div className="mx-auto max-w-4xl rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 p-8 shadow-lg">
+    <h2 className="mb-2 font-bold text-3xl text-slate-900">{title}</h2>
+    <p className="mb-6 text-slate-600 text-sm">
+      Demonstrates array scoping with{" "}
+      <code className="rounded bg-purple-200 px-1.5 py-0.5 font-mono text-xs">
+        $item
+      </code>{" "}
+      and{" "}
+      <code className="rounded bg-purple-200 px-1.5 py-0.5 font-mono text-xs">
+        $index
+      </code>{" "}
+      in expressions
+    </p>
+
+    <div className="space-y-3">
+      {items.map((item, index) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: Stable demo array, index used for ArrayScopeProvider context
+        <ArrayScopeProvider index={index} item={item} key={index}>
+          <div className="rounded-lg border-2 border-purple-200 bg-white/90 p-4 shadow-sm transition-all hover:shadow-md">
+            <div className="font-semibold text-purple-900">
+              {/* This would render the itemTemplate with $item and $index available */}
+              {itemTemplate}
+            </div>
+            <div className="mt-2 text-slate-600 text-xs">
+              <strong>$item:</strong> {JSON.stringify(item)} |{" "}
+              <strong>$index:</strong> {index}
+            </div>
+          </div>
+        </ArrayScopeProvider>
+      ))}
+    </div>
+
+    <div className="mt-6 rounded-lg bg-purple-100 p-4">
+      <p className="mb-2 font-semibold text-purple-900 text-sm">
+        💡 How to use array scoping:
+      </p>
+      <ol className="list-inside list-decimal space-y-1 text-purple-800 text-xs">
+        <li>
+          Wrap each array item with{" "}
+          <code className="bg-purple-200 px-1">ArrayScopeProvider</code>
+        </li>
+        <li>
+          Pass <code className="bg-purple-200 px-1">item</code> and{" "}
+          <code className="bg-purple-200 px-1">index</code> props
+        </li>
+        <li>
+          Use <code className="bg-purple-200 px-1">$item</code> and{" "}
+          <code className="bg-purple-200 px-1">$index</code> in expressions
+        </li>
+        <li>
+          Example:{" "}
+          <code className="bg-purple-200 px-1">
+            "#" & ($index + 1) & ": " & $item.name
+          </code>
+        </li>
+      </ol>
+    </div>
+  </div>
+);
+
+// ============================================================================
 // PUCK CONFIG
 // ============================================================================
 
@@ -345,6 +427,7 @@ const mockExternalData = [
 const baseConfig: Config<{
   FieldShowcase: FieldShowcaseProps;
   SlotShowcase: SlotShowcaseProps;
+  ArrayScopingDemo: ArrayScopingDemoProps;
   TextBlock: TextBlockProps;
   ButtonBlock: ButtonBlockProps;
 }> = {
@@ -611,6 +694,60 @@ const baseConfig: Config<{
       render: TextBlock,
     },
 
+    ArrayScopingDemo: {
+      fields: {
+        title: {
+          type: "text",
+          label: "Demo Title",
+        },
+        items: {
+          type: "array",
+          label: "Product Items",
+          arrayFields: {
+            name: {
+              type: "text",
+              label: "Product Name",
+            },
+            price: {
+              type: "number",
+              label: "Price",
+              min: 0,
+            },
+            category: {
+              type: "select",
+              label: "Category",
+              options: [
+                { label: "Electronics", value: "electronics" },
+                { label: "Clothing", value: "clothing" },
+                { label: "Food", value: "food" },
+                { label: "Books", value: "books" },
+              ],
+            },
+          },
+          defaultItemProps: {
+            name: "New Product",
+            price: 10,
+            category: "electronics",
+          },
+          getItemSummary: (item) => item.name || "Unnamed Product",
+        },
+        itemTemplate: {
+          type: "text",
+          label: "Item Display Template",
+        },
+      },
+      defaultProps: {
+        title: "Array Scoping Demonstration",
+        items: [
+          { name: "Laptop", price: 999, category: "electronics" },
+          { name: "T-Shirt", price: 25, category: "clothing" },
+          { name: "Coffee Beans", price: 15, category: "food" },
+        ],
+        itemTemplate: "Default template (use expressions for dynamic content)",
+      },
+      render: ArrayScopingDemo,
+    },
+
     ButtonBlock: {
       fields: {
         label: {
@@ -643,6 +780,13 @@ export const initialData = {
       props: {
         id: "FieldShowcase-1",
         ...baseConfig.components.FieldShowcase.defaultProps,
+      },
+    },
+    {
+      type: "ArrayScopingDemo",
+      props: {
+        id: "ArrayScopingDemo-1",
+        ...baseConfig.components.ArrayScopingDemo.defaultProps,
       },
     },
     {
